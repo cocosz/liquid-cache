@@ -547,21 +547,56 @@ impl LiquidCache {
                     entry: new_batch,
                     bytes_to_write,
                 } => {
-                    if let Some(bytes_to_write) = bytes_to_write {
-                        self.write_batch_to_disk(to_squeeze, &new_batch, bytes_to_write)
-                            .await?;
-                    }
-                    match self.try_insert(to_squeeze, new_batch) {
-                        Ok(()) => {
+                    if self.disable_disk_spill {
+                        // No disk spill mode: if this squeeze step wants to write to disk,
+                        // drop the entry entirely instead. The reader will fall back to Parquet.
+                        if bytes_to_write.is_some() || new_batch.is_disk_entry() {
+                            // Remove from index and release memory
+                            if let Some(removed) = self.index.remove(&to_squeeze) {
+                                self.budget
+                                    .try_update_memory_usage(removed.memory_usage_bytes(), 0)
+                                    .expect("memory release cannot fail");
+                            }
+                            self.cache_policy.notify_remove(&to_squeeze);
                             break;
                         }
-                        Err(batch) => {
-                            to_squeeze_batch = Arc::new(batch);
+                        // No disk write needed — this is a pure in-memory compression
+                        // (e.g., Arrow → Liquid transcode). Proceed normally.
+                        match self.try_insert(to_squeeze, new_batch) {
+                            Ok(()) => {
+                                break;
+                            }
+                            Err(batch) => {
+                                to_squeeze_batch = Arc::new(batch);
+                            }
+                        }
+                    } else {
+                        if let Some(bytes_to_write) = bytes_to_write {
+                            self.write_batch_to_disk(to_squeeze, &new_batch, bytes_to_write)
+                                .await?;
+                        }
+                        match self.try_insert(to_squeeze, new_batch) {
+                            Ok(()) => {
+                                break;
+                            }
+                            Err(batch) => {
+                                to_squeeze_batch = Arc::new(batch);
+                            }
                         }
                     }
                 }
                 SqueezeOutcome::Remove => {
-                    self.remove_disk_entry(to_squeeze).await;
+                    if !self.disable_disk_spill {
+                        self.remove_disk_entry(to_squeeze).await;
+                    } else {
+                        // Just remove from index, no disk cleanup needed
+                        if let Some(removed) = self.index.remove(&to_squeeze) {
+                            self.budget
+                                .try_update_memory_usage(removed.memory_usage_bytes(), 0)
+                                .expect("memory release cannot fail");
+                        }
+                        self.cache_policy.notify_remove(&to_squeeze);
+                    }
                     break;
                 }
             }

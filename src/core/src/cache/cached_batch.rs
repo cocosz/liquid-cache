@@ -64,6 +64,11 @@ impl CacheEntry {
         }
     }
 
+    /// Returns true if this entry resides on disk.
+    pub fn is_disk_entry(&self) -> bool {
+        matches!(self, Self::DiskLiquid { .. } | Self::DiskArrow { .. })
+    }
+
     /// Memory usage reported by the underlying representation.
     pub fn memory_usage_bytes(&self) -> usize {
         match self {
