@@ -189,6 +189,11 @@ impl LiquidCache {
         self.budget.reset_usage();
     }
 
+    /// Returns whether disk spill is disabled.
+    pub fn disable_disk_spill(&self) -> bool {
+        self.disable_disk_spill
+    }
+
     /// Check if a batch is cached.
     pub fn is_cached(&self, entry_id: &EntryID) -> bool {
         self.index.is_cached(entry_id)

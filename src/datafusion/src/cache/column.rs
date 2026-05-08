@@ -196,6 +196,13 @@ impl CachedColumn {
             return Err(InsertArrowArrayError::AlreadyCached);
         }
 
+        // Skip caching string/binary columns — they're too large and better
+        // served directly from Parquet. This is controlled by the cache_store's
+        // disable_disk_spill setting as a proxy for "memory-only mode".
+        if self.cache_store.disable_disk_spill() && is_string_type(self.field.data_type()) {
+            return Err(InsertArrowArrayError::CacheFull);
+        }
+
         self.cache_store
             .insert(self.entry_id(batch_id).into(), array)
             .await?;
