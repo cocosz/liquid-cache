@@ -367,29 +367,37 @@ impl LiquidCache {
                 kind: CachedBatchType::from(&not_inserted),
             });
 
-            // Prevent infinite squeeze loops — after enough attempts, give up
-            attempts += 1;
-            if attempts > 64 {
-                return Err(CacheFull);
-            }
-
             let victims = self.cache_policy.find_memory_victim(8);
             if victims.is_empty() {
                 if self.disable_disk_spill {
-                    // No victims and disk spill disabled — give up on caching this entry.
-                    // The reader will fall back to reading from Parquet directly.
                     return Err(CacheFull);
                 }
-                // no advice, because the cache is already empty
-                // this can happen if the entry to be inserted is too large, in that case,
-                // we write it to disk
                 let on_disk_batch = self
                     .write_in_memory_batch_to_disk(entry_id, not_inserted)
                     .await?;
                 batch_to_cache = on_disk_batch;
                 continue;
             }
+
+            let mem_before = self.budget.memory_usage_bytes();
             self.squeeze_victims(victims).await?;
+            let mem_after = self.budget.memory_usage_bytes();
+
+            // If squeeze didn't free any memory, further attempts won't help.
+            // Write directly to disk or give up.
+            if mem_after >= mem_before {
+                attempts += 1;
+                if attempts > 3 {
+                    if self.disable_disk_spill {
+                        return Err(CacheFull);
+                    }
+                    let on_disk_batch = self
+                        .write_in_memory_batch_to_disk(entry_id, not_inserted)
+                        .await?;
+                    batch_to_cache = on_disk_batch;
+                    continue;
+                }
+            }
 
             batch_to_cache = not_inserted;
             crate::utils::yield_now_if_shuttle();
