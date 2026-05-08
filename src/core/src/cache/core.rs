@@ -357,6 +357,7 @@ impl LiquidCache {
         entry_id: EntryID,
         mut batch_to_cache: CacheEntry,
     ) -> Result<(), CacheFull> {
+        let mut attempts = 0;
         loop {
             let Err(not_inserted) = self.try_insert(entry_id, batch_to_cache) else {
                 return Ok(());
@@ -365,6 +366,12 @@ impl LiquidCache {
                 entry: entry_id,
                 kind: CachedBatchType::from(&not_inserted),
             });
+
+            // Prevent infinite squeeze loops — after enough attempts, give up
+            attempts += 1;
+            if attempts > 64 {
+                return Err(CacheFull);
+            }
 
             let victims = self.cache_policy.find_memory_victim(8);
             if victims.is_empty() {
