@@ -302,6 +302,7 @@ impl LiquidCacheParquet {
         hydration_policy: Box<dyn HydrationPolicy>,
         squeeze_victims_concurrently: bool,
         disable_disk_spill: bool,
+        skip_string_columns: bool,
     ) -> Self {
         assert!(batch_size.is_power_of_two());
         let metadata = Arc::new(ParquetCacheMetadata::new());
@@ -316,6 +317,7 @@ impl LiquidCacheParquet {
             .with_store(store)
             .with_squeeze_victims_concurrently(squeeze_victims_concurrently)
             .with_disable_disk_spill(disable_disk_spill)
+            .with_skip_string_columns(skip_string_columns)
             .build()
             .await;
 

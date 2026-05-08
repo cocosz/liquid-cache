@@ -70,6 +70,8 @@ pub struct LiquidCacheLocalBuilder {
     span: fastrace::Span,
     /// When true, never spill to disk — return CacheFull instead
     disable_disk_spill: bool,
+    /// When true, skip caching string/binary columns
+    skip_string_columns: bool,
 }
 
 impl Default for LiquidCacheLocalBuilder {
@@ -83,6 +85,7 @@ impl Default for LiquidCacheLocalBuilder {
             hydration_policy: Box::new(AlwaysHydrate::new()),
             span: fastrace::Span::enter_with_local_parent("liquid_cache_datafusion_local_builder"),
             disable_disk_spill: false,
+            skip_string_columns: false,
         }
     }
 }
@@ -142,6 +145,12 @@ impl LiquidCacheLocalBuilder {
         self
     }
 
+    /// Skip caching string/binary columns — read from Parquet directly.
+    pub fn with_skip_string_columns(mut self, skip: bool) -> Self {
+        self.skip_string_columns = skip;
+        self
+    }
+
     /// Build a SessionContext with liquid cache configured
     /// Returns the SessionContext and the liquid cache reference
     pub async fn build(
@@ -172,6 +181,7 @@ impl LiquidCacheLocalBuilder {
             self.hydration_policy,
             !cfg!(test),
             self.disable_disk_spill,
+            self.skip_string_columns,
         )
         .await;
 
@@ -186,6 +196,7 @@ impl LiquidCacheLocalBuilder {
             self.hydration_policy,
             false,
             self.disable_disk_spill,
+            self.skip_string_columns,
         )
         .await;
         let cache_ref = Arc::new(cache);

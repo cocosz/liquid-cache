@@ -40,6 +40,7 @@ pub struct LiquidCacheBuilder {
     store: Option<t4::Store>,
     squeeze_victims_concurrently: bool,
     disable_disk_spill: bool,
+    skip_string_columns: bool,
 }
 
 impl Default for LiquidCacheBuilder {
@@ -62,6 +63,7 @@ impl LiquidCacheBuilder {
             store: None,
             squeeze_victims_concurrently: !cfg!(test),
             disable_disk_spill: false,
+            skip_string_columns: false,
         }
     }
 
@@ -135,6 +137,12 @@ impl LiquidCacheBuilder {
         self
     }
 
+    /// Skip caching string/binary columns. They read from Parquet directly.
+    pub fn with_skip_string_columns(mut self, skip: bool) -> Self {
+        self.skip_string_columns = skip;
+        self
+    }
+
     /// Build the cache storage.
     ///
     /// The cache storage is wrapped in an [Arc] to allow for concurrent access.
@@ -164,6 +172,7 @@ impl LiquidCacheBuilder {
             store,
             self.squeeze_victims_concurrently,
             self.disable_disk_spill,
+            self.skip_string_columns,
         ))
     }
 }

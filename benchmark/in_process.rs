@@ -69,6 +69,10 @@ struct InProcessBenchmark {
     /// Disable disk spill — when memory is full, skip caching instead of writing to disk
     #[arg(long = "disable-disk-spill", default_value_t = false)]
     pub disable_disk_spill: bool,
+
+    /// Skip caching string/binary columns — read them from Parquet directly
+    #[arg(long = "skip-string-columns", default_value_t = false)]
+    pub skip_string_columns: bool,
 }
 
 impl InProcessBenchmark {
@@ -87,7 +91,8 @@ impl InProcessBenchmark {
             .with_cache_dir(self.cache_dir.clone())
             .with_query_filter(self.query_index)
             .with_output_dir(self.output_dir.clone())
-            .with_disable_disk_spill(self.disable_disk_spill);
+            .with_disable_disk_spill(self.disable_disk_spill)
+            .with_skip_string_columns(self.skip_string_columns);
         runner.run(manifest, self, output).await?;
         Ok(())
     }

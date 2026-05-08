@@ -198,7 +198,7 @@ impl CachedColumn {
 
         // Skip caching string/binary columns — they're too large and better
         // served directly from Parquet.
-        if is_string_type(self.field.data_type()) {
+        if self.cache_store.skip_string_columns() && is_string_type(self.field.data_type()) {
             return Err(InsertArrowArrayError::CacheFull);
         }
 

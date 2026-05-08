@@ -201,6 +201,7 @@ pub struct InProcessBenchmarkRunner {
     pub output_dir: Option<PathBuf>,
     pub collect_perf_events: bool,
     pub disable_disk_spill: bool,
+    pub skip_string_columns: bool,
 }
 
 impl Default for InProcessBenchmarkRunner {
@@ -223,6 +224,7 @@ impl InProcessBenchmarkRunner {
             output_dir: None,
             collect_perf_events: false,
             disable_disk_spill: false,
+            skip_string_columns: false,
         }
     }
 
@@ -281,6 +283,11 @@ impl InProcessBenchmarkRunner {
         self
     }
 
+    pub fn with_skip_string_columns(mut self, skip: bool) -> Self {
+        self.skip_string_columns = skip;
+        self
+    }
+
     #[fastrace::trace]
     async fn setup_context(
         &self,
@@ -336,6 +343,7 @@ impl InProcessBenchmarkRunner {
                     .with_hydration_policy(Box::new(NoHydration::new()))
                     .with_squeeze_policy(Box::new(Evict))
                     .with_disable_disk_spill(self.disable_disk_spill)
+                    .with_skip_string_columns(self.skip_string_columns)
                     .build(session_config)
                     .await?;
                 (v.0, Some(v.1))
@@ -348,6 +356,7 @@ impl InProcessBenchmarkRunner {
                     .with_hydration_policy(Box::new(NoHydration::new()))
                     .with_squeeze_policy(Box::new(TranscodeSqueezeEvict))
                     .with_disable_disk_spill(self.disable_disk_spill)
+                    .with_skip_string_columns(self.skip_string_columns)
                     .build(session_config)
                     .await?;
                 (v.0, Some(v.1))
@@ -360,6 +369,7 @@ impl InProcessBenchmarkRunner {
                     .with_hydration_policy(Box::new(NoHydration::new()))
                     .with_squeeze_policy(Box::new(TranscodeEvict))
                     .with_disable_disk_spill(self.disable_disk_spill)
+                    .with_skip_string_columns(self.skip_string_columns)
                     .build(session_config)
                     .await?;
                 (v.0, Some(v.1))

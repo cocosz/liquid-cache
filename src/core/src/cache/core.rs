@@ -64,6 +64,8 @@ pub struct LiquidCache {
     /// can free enough space, the insert fails with CacheFull and the reader
     /// falls back to reading from Parquet directly.
     disable_disk_spill: bool,
+    /// When true, string/binary columns are never cached — they read from Parquet directly.
+    skip_string_columns: bool,
 }
 
 /// Builder returned by [`LiquidCache::insert`] for configuring cache writes.
@@ -192,6 +194,11 @@ impl LiquidCache {
     /// Returns whether disk spill is disabled.
     pub fn disable_disk_spill(&self) -> bool {
         self.disable_disk_spill
+    }
+
+    /// Returns whether string columns should be skipped from caching.
+    pub fn skip_string_columns(&self) -> bool {
+        self.skip_string_columns
     }
 
     /// Check if a batch is cached.
@@ -395,6 +402,7 @@ impl LiquidCache {
         store: t4::Store,
         squeeze_victims_concurrently: bool,
         disable_disk_spill: bool,
+        skip_string_columns: bool,
     ) -> Self {
         let config = CacheConfig::new(batch_size, max_memory_bytes, max_disk_bytes);
         let observer = Arc::new(Observer::new());
@@ -414,6 +422,7 @@ impl LiquidCache {
             store,
             squeeze_victims_concurrently,
             disable_disk_spill,
+            skip_string_columns,
         }
     }
 
