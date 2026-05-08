@@ -286,6 +286,7 @@ impl LiquidCacheParquet {
             hydration_policy,
             squeeze_victims_concurrently,
             false,
+            false,
         )
         .await
     }
