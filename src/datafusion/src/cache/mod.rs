@@ -276,6 +276,33 @@ impl LiquidCacheParquet {
         hydration_policy: Box<dyn HydrationPolicy>,
         squeeze_victims_concurrently: bool,
     ) -> Self {
+        Self::new_with_options(
+            batch_size,
+            max_memory_bytes,
+            max_disk_bytes,
+            store,
+            cache_policy,
+            squeeze_policy,
+            hydration_policy,
+            squeeze_victims_concurrently,
+            false,
+        )
+        .await
+    }
+
+    /// Create a new cache with all options including disk spill control.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn new_with_options(
+        batch_size: usize,
+        max_memory_bytes: usize,
+        max_disk_bytes: usize,
+        store: t4::Store,
+        cache_policy: Box<dyn CachePolicy>,
+        squeeze_policy: Box<dyn SqueezePolicy>,
+        hydration_policy: Box<dyn HydrationPolicy>,
+        squeeze_victims_concurrently: bool,
+        disable_disk_spill: bool,
+    ) -> Self {
         assert!(batch_size.is_power_of_two());
         let metadata = Arc::new(ParquetCacheMetadata::new());
         let cache_storage = LiquidCacheBuilder::new()
@@ -288,6 +315,7 @@ impl LiquidCacheParquet {
             .with_metadata(metadata)
             .with_store(store)
             .with_squeeze_victims_concurrently(squeeze_victims_concurrently)
+            .with_disable_disk_spill(disable_disk_spill)
             .build()
             .await;
 

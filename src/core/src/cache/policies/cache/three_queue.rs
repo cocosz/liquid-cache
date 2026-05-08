@@ -213,7 +213,17 @@ impl CachePolicy for LiquidPolicy {
         victims
     }
 
-    fn notify_access(&self, _entry_id: &EntryID, _batch_type: CachedBatchType) {}
+    fn notify_access(&self, entry_id: &EntryID, _batch_type: CachedBatchType) {
+        let mut inner = self.inner.lock().unwrap();
+        // LRU: move accessed entry to the back of its queue so it's evicted last
+        if let Some(node_ptr) = inner.map.get(entry_id).copied() {
+            unsafe {
+                let queue = node_ptr.as_ref().data.queue;
+                inner.detach(node_ptr);
+                inner.push_back(queue, node_ptr);
+            }
+        }
+    }
 
     fn notify_remove(&self, entry_id: &EntryID) {
         let mut inner = self.inner.lock().unwrap();

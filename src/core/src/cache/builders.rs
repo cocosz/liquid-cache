@@ -39,6 +39,7 @@ pub struct LiquidCacheBuilder {
     metadata: Option<Arc<dyn EntryMetadata>>,
     store: Option<t4::Store>,
     squeeze_victims_concurrently: bool,
+    disable_disk_spill: bool,
 }
 
 impl Default for LiquidCacheBuilder {
@@ -60,6 +61,7 @@ impl LiquidCacheBuilder {
             metadata: None,
             store: None,
             squeeze_victims_concurrently: !cfg!(test),
+            disable_disk_spill: false,
         }
     }
 
@@ -125,6 +127,14 @@ impl LiquidCacheBuilder {
         self
     }
 
+    /// Disable disk spill. When memory is full and no victims can free enough
+    /// space, inserts fail with CacheFull and the reader falls back to Parquet.
+    /// This avoids the 10x disk read penalty at the cost of not caching overflow data.
+    pub fn with_disable_disk_spill(mut self, disabled: bool) -> Self {
+        self.disable_disk_spill = disabled;
+        self
+    }
+
     /// Build the cache storage.
     ///
     /// The cache storage is wrapped in an [Arc] to allow for concurrent access.
@@ -153,6 +163,7 @@ impl LiquidCacheBuilder {
             metadata,
             store,
             self.squeeze_victims_concurrently,
+            self.disable_disk_spill,
         ))
     }
 }

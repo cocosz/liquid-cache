@@ -60,6 +60,10 @@ pub struct LiquidCache {
     metadata: Arc<dyn EntryMetadata>,
     store: t4::Store,
     squeeze_victims_concurrently: bool,
+    /// When true, never spill data to disk. If memory is full and no victims
+    /// can free enough space, the insert fails with CacheFull and the reader
+    /// falls back to reading from Parquet directly.
+    disable_disk_spill: bool,
 }
 
 /// Builder returned by [`LiquidCache::insert`] for configuring cache writes.
@@ -352,6 +356,11 @@ impl LiquidCache {
 
             let victims = self.cache_policy.find_memory_victim(8);
             if victims.is_empty() {
+                if self.disable_disk_spill {
+                    // No victims and disk spill disabled — give up on caching this entry.
+                    // The reader will fall back to reading from Parquet directly.
+                    return Err(CacheFull);
+                }
                 // no advice, because the cache is already empty
                 // this can happen if the entry to be inserted is too large, in that case,
                 // we write it to disk
@@ -380,6 +389,7 @@ impl LiquidCache {
         metadata: Arc<dyn EntryMetadata>,
         store: t4::Store,
         squeeze_victims_concurrently: bool,
+        disable_disk_spill: bool,
     ) -> Self {
         let config = CacheConfig::new(batch_size, max_memory_bytes, max_disk_bytes);
         let observer = Arc::new(Observer::new());
@@ -398,6 +408,7 @@ impl LiquidCache {
             metadata,
             store,
             squeeze_victims_concurrently,
+            disable_disk_spill,
         }
     }
 

@@ -65,6 +65,10 @@ struct InProcessBenchmark {
     /// Jaeger OTLP gRPC endpoint (for example: http://localhost:4317)
     #[arg(long = "jaeger-endpoint")]
     pub jaeger_endpoint: Option<String>,
+
+    /// Disable disk spill — when memory is full, skip caching instead of writing to disk
+    #[arg(long = "disable-disk-spill", default_value_t = false)]
+    pub disable_disk_spill: bool,
 }
 
 impl InProcessBenchmark {
@@ -82,7 +86,8 @@ impl InProcessBenchmark {
             .with_flamegraph_dir(self.flamegraph_dir.clone())
             .with_cache_dir(self.cache_dir.clone())
             .with_query_filter(self.query_index)
-            .with_output_dir(self.output_dir.clone());
+            .with_output_dir(self.output_dir.clone())
+            .with_disable_disk_spill(self.disable_disk_spill);
         runner.run(manifest, self, output).await?;
         Ok(())
     }

@@ -68,6 +68,8 @@ pub struct LiquidCacheLocalBuilder {
     /// Hydration policy
     hydration_policy: Box<dyn HydrationPolicy>,
     span: fastrace::Span,
+    /// When true, never spill to disk — return CacheFull instead
+    disable_disk_spill: bool,
 }
 
 impl Default for LiquidCacheLocalBuilder {
@@ -80,6 +82,7 @@ impl Default for LiquidCacheLocalBuilder {
             squeeze_policy: Box::new(TranscodeSqueezeEvict),
             hydration_policy: Box::new(AlwaysHydrate::new()),
             span: fastrace::Span::enter_with_local_parent("liquid_cache_datafusion_local_builder"),
+            disable_disk_spill: false,
         }
     }
 }
@@ -132,6 +135,13 @@ impl LiquidCacheLocalBuilder {
         self
     }
 
+    /// Disable disk spill. When memory is full, inserts fail with CacheFull
+    /// and the reader falls back to Parquet. Avoids the disk read penalty.
+    pub fn with_disable_disk_spill(mut self, disabled: bool) -> Self {
+        self.disable_disk_spill = disabled;
+        self
+    }
+
     /// Build a SessionContext with liquid cache configured
     /// Returns the SessionContext and the liquid cache reference
     pub async fn build(
@@ -152,7 +162,7 @@ impl LiquidCacheLocalBuilder {
             .await
             .map_err(|e| datafusion::error::DataFusionError::External(Box::new(e)))?;
         #[cfg(not(test))]
-        let cache = LiquidCacheParquet::new(
+        let cache = LiquidCacheParquet::new_with_options(
             self.batch_size,
             self.max_memory_bytes,
             usize::MAX,
@@ -160,11 +170,13 @@ impl LiquidCacheLocalBuilder {
             self.cache_policy,
             self.squeeze_policy,
             self.hydration_policy,
+            !cfg!(test),
+            self.disable_disk_spill,
         )
         .await;
 
         #[cfg(test)]
-        let cache = LiquidCacheParquet::new_with_squeeze_victim_concurrency(
+        let cache = LiquidCacheParquet::new_with_options(
             self.batch_size,
             self.max_memory_bytes,
             usize::MAX,
@@ -173,6 +185,7 @@ impl LiquidCacheLocalBuilder {
             self.squeeze_policy,
             self.hydration_policy,
             false,
+            self.disable_disk_spill,
         )
         .await;
         let cache_ref = Arc::new(cache);
