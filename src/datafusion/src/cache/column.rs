@@ -22,6 +22,8 @@ pub struct CachedColumn {
     field: Arc<Field>,
     column_path: ColumnAccessPath,
     expression: Option<Arc<CacheExpression>>,
+    /// When true, this column is never cached (reads from Parquet directly).
+    skip_caching: bool,
 }
 
 /// A reference to a cached column.
@@ -83,7 +85,22 @@ impl CachedColumn {
             cache_store,
             column_path: column_access_path,
             expression,
+            skip_caching: false,
         }
+    }
+
+    pub(crate) fn new_with_skip_strings(
+        field: Arc<Field>,
+        cache_store: Arc<LiquidCache>,
+        column_access_path: ColumnAccessPath,
+        is_predicate_column: bool,
+        skip_string_columns: bool,
+    ) -> Self {
+        let mut col = Self::new(field, cache_store, column_access_path, is_predicate_column);
+        if skip_string_columns && is_string_type(col.field.data_type()) {
+            col.skip_caching = true;
+        }
+        col
     }
 
     /// row_id must be on a batch boundary.
@@ -93,6 +110,11 @@ impl CachedColumn {
 
     pub(crate) fn is_cached(&self, batch_id: BatchID) -> bool {
         self.cache_store.is_cached(&self.entry_id(batch_id).into())
+    }
+
+    /// Returns whether this column skips caching (reads from Parquet directly).
+    pub fn is_skip_caching(&self) -> bool {
+        self.skip_caching
     }
 
     /// Returns the Arrow field metadata for this cached column.
@@ -171,6 +193,11 @@ impl CachedColumn {
         batch_id: BatchID,
         filter: &BooleanBuffer,
     ) -> Option<ArrayRef> {
+        // If this column is not cached (e.g., string columns skipped),
+        // return None immediately so the reader falls back to Parquet.
+        if self.skip_caching {
+            return None;
+        }
         let entry_id = self.entry_id(batch_id).into();
         self.cache_store
             .get(&entry_id)
@@ -192,6 +219,9 @@ impl CachedColumn {
         batch_id: BatchID,
         array: ArrayRef,
     ) -> Result<(), InsertArrowArrayError> {
+        if self.skip_caching {
+            return Err(InsertArrowArrayError::CacheFull);
+        }
         if self.is_cached(batch_id) {
             return Err(InsertArrowArrayError::AlreadyCached);
         }
@@ -206,6 +236,7 @@ impl CachedColumn {
 fn is_string_type(data_type: &DataType) -> bool {
     match data_type {
         DataType::Utf8 | DataType::Utf8View | DataType::LargeUtf8 => true,
+        DataType::Binary | DataType::BinaryView | DataType::LargeBinary => true,
         DataType::Dictionary(_, value_type) => is_string_type(value_type.as_ref()),
         _ => false,
     }

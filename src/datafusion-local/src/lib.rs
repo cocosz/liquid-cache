@@ -68,6 +68,8 @@ pub struct LiquidCacheLocalBuilder {
     /// Hydration policy
     hydration_policy: Box<dyn HydrationPolicy>,
     span: fastrace::Span,
+    /// Skip caching string/binary columns
+    skip_string_columns: bool,
 }
 
 impl Default for LiquidCacheLocalBuilder {
@@ -80,6 +82,7 @@ impl Default for LiquidCacheLocalBuilder {
             squeeze_policy: Box::new(TranscodeSqueezeEvict),
             hydration_policy: Box::new(AlwaysHydrate::new()),
             span: fastrace::Span::enter_with_local_parent("liquid_cache_datafusion_local_builder"),
+            skip_string_columns: false,
         }
     }
 }
@@ -132,6 +135,12 @@ impl LiquidCacheLocalBuilder {
         self
     }
 
+    /// Skip caching string/binary columns — read from Parquet directly.
+    pub fn with_skip_string_columns(mut self, skip: bool) -> Self {
+        self.skip_string_columns = skip;
+        self
+    }
+
     /// Build a SessionContext with liquid cache configured
     /// Returns the SessionContext and the liquid cache reference
     pub async fn build(
@@ -161,7 +170,8 @@ impl LiquidCacheLocalBuilder {
             self.squeeze_policy,
             self.hydration_policy,
         )
-        .await;
+        .await
+        .with_skip_string_columns(self.skip_string_columns);
 
         #[cfg(test)]
         let cache = LiquidCacheParquet::new_with_squeeze_victim_concurrency(
@@ -174,7 +184,8 @@ impl LiquidCacheLocalBuilder {
             self.hydration_policy,
             false,
         )
-        .await;
+        .await
+        .with_skip_string_columns(self.skip_string_columns);
         let cache_ref = Arc::new(cache);
 
         let date_extract_optimizer = Arc::new(LineageOptimizer::new());

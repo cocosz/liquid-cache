@@ -49,15 +49,17 @@ impl CachedRowGroup {
         row_group_idx: u64,
         file_idx: u64,
         columns: &[(u64, Arc<Field>, bool)],
+        skip_string_columns: bool,
     ) -> Self {
         let mut column_maps = ColumnMaps::default();
         for (column_id, field, is_predicate_column) in columns {
             let column_access_path = ColumnAccessPath::new(file_idx, row_group_idx, *column_id);
-            let column = Arc::new(CachedColumn::new(
+            let column = Arc::new(CachedColumn::new_with_skip_strings(
                 Arc::clone(field),
                 Arc::clone(&cache_store),
                 column_access_path,
                 *is_predicate_column,
+                skip_string_columns,
             ));
             column_maps.by_id.insert(*column_id, column.clone());
             column_maps.by_name.insert(field.name().to_string(), column);
@@ -175,14 +177,16 @@ pub struct CachedFile {
     cache_store: Arc<LiquidCache>,
     file_id: u64,
     file_schema: SchemaRef,
+    skip_string_columns: bool,
 }
 
 impl CachedFile {
-    fn new(cache_store: Arc<LiquidCache>, file_id: u64, file_schema: SchemaRef) -> Self {
+    fn new(cache_store: Arc<LiquidCache>, file_id: u64, file_schema: SchemaRef, skip_string_columns: bool) -> Self {
         Self {
             cache_store,
             file_id,
             file_schema,
+            skip_string_columns,
         }
     }
 
@@ -208,6 +212,7 @@ impl CachedFile {
             row_group_id,
             self.file_id,
             &columns,
+            self.skip_string_columns,
         ))
     }
 
@@ -234,6 +239,9 @@ pub struct LiquidCacheParquet {
     cache_store: Arc<LiquidCache>,
 
     current_file_id: AtomicU64,
+
+    /// When true, string/binary columns are never cached.
+    skip_string_columns: bool,
 }
 
 /// A reference to the main cache structure.
@@ -295,7 +303,19 @@ impl LiquidCacheParquet {
             files: Mutex::new(AHashMap::new()),
             cache_store: cache_storage,
             current_file_id: AtomicU64::new(0),
+            skip_string_columns: false,
         }
+    }
+
+    /// Set whether to skip caching string/binary columns.
+    pub fn with_skip_string_columns(mut self, skip: bool) -> Self {
+        self.skip_string_columns = skip;
+        self
+    }
+
+    /// Returns whether string columns are skipped from caching.
+    pub fn skip_string_columns(&self) -> bool {
+        self.skip_string_columns
     }
 
     /// Register a file in the cache.
@@ -314,6 +334,7 @@ impl LiquidCacheParquet {
             self.cache_store.clone(),
             file_id,
             full_file_schema,
+            self.skip_string_columns,
         ))
     }
 

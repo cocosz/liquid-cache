@@ -65,6 +65,10 @@ struct InProcessBenchmark {
     /// Jaeger OTLP gRPC endpoint (for example: http://localhost:4317)
     #[arg(long = "jaeger-endpoint")]
     pub jaeger_endpoint: Option<String>,
+
+    /// Skip caching string/binary columns — read them from Parquet directly
+    #[arg(long = "skip-string-columns", default_value_t = false)]
+    pub skip_string_columns: bool,
 }
 
 impl InProcessBenchmark {
@@ -82,7 +86,8 @@ impl InProcessBenchmark {
             .with_flamegraph_dir(self.flamegraph_dir.clone())
             .with_cache_dir(self.cache_dir.clone())
             .with_query_filter(self.query_index)
-            .with_output_dir(self.output_dir.clone());
+            .with_output_dir(self.output_dir.clone())
+            .with_skip_string_columns(self.skip_string_columns);
         runner.run(manifest, self, output).await?;
         Ok(())
     }

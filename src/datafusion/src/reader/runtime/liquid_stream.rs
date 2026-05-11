@@ -161,6 +161,51 @@ fn build_liquid_cache_reader(
         .row_group(context.row_group_idx)
         .num_rows() as usize;
     let cache_batch_size = context.cached_row_group.batch_size();
+    let schema_descr = reader_factory.metadata.file_metadata().schema_descr();
+
+    // Determine which PROJECTED columns are skipped (passthrough).
+    // Use projection_column_ids (what the reader iterates), not cache_column_ids.
+    let passthrough_column_ids: Vec<usize> = context
+        .projection_column_ids
+        .iter()
+        .copied()
+        .filter(|col_id| {
+            context
+                .cached_row_group
+                .get_column(*col_id as u64)
+                .map(|col| col.is_skip_caching())
+                .unwrap_or(false)
+        })
+        .collect();
+
+    // Passthrough fallback: reads only string columns from Parquet
+    let passthrough_fallback = if passthrough_column_ids.is_empty() {
+        None
+    } else {
+        let passthrough_projection =
+            ProjectionMask::roots(schema_descr, passthrough_column_ids.iter().copied());
+        Some(ParquetFallbackConfig {
+            row_group_idx: context.row_group_idx,
+            metadata: Arc::clone(&reader_factory.metadata),
+            input: reader_factory.input.clone(),
+            cache_projection: passthrough_projection,
+            cache_column_ids: passthrough_column_ids.clone(),
+            cache_batch_size,
+            row_count,
+        })
+    };
+
+    // Full fallback: reads ALL projected columns from Parquet (for cold cache misses).
+    let full_fallback = ParquetFallbackConfig {
+        row_group_idx: context.row_group_idx,
+        metadata: Arc::clone(&reader_factory.metadata),
+        input: reader_factory.input.clone(),
+        cache_projection: context.cache_projection,
+        cache_column_ids: context.cache_column_ids,
+        cache_batch_size,
+        row_count,
+    };
+
     LiquidCacheReader::new(LiquidCacheReaderConfig {
         batch_size: context.batch_size,
         selection: context.selection,
@@ -168,15 +213,8 @@ fn build_liquid_cache_reader(
         cached_row_group: context.cached_row_group,
         projection_columns: context.projection_column_ids,
         schema,
-        parquet_fallback: ParquetFallbackConfig {
-            row_group_idx: context.row_group_idx,
-            metadata: Arc::clone(&reader_factory.metadata),
-            input: reader_factory.input.clone(),
-            cache_projection: context.cache_projection,
-            cache_column_ids: context.cache_column_ids,
-            cache_batch_size,
-            row_count,
-        },
+        parquet_fallback: full_fallback,
+        passthrough_fallback,
     })
 }
 

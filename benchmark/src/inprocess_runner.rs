@@ -200,6 +200,7 @@ pub struct InProcessBenchmarkRunner {
     pub cache_dir: Option<PathBuf>,
     pub output_dir: Option<PathBuf>,
     pub collect_perf_events: bool,
+    pub skip_string_columns: bool,
 }
 
 impl Default for InProcessBenchmarkRunner {
@@ -221,6 +222,7 @@ impl InProcessBenchmarkRunner {
             cache_dir: None,
             output_dir: None,
             collect_perf_events: false,
+            skip_string_columns: false,
         }
     }
 
@@ -271,6 +273,11 @@ impl InProcessBenchmarkRunner {
 
     pub fn with_output_dir(mut self, output_dir: Option<PathBuf>) -> Self {
         self.output_dir = output_dir;
+        self
+    }
+
+    pub fn with_skip_string_columns(mut self, skip: bool) -> Self {
+        self.skip_string_columns = skip;
         self
     }
 
@@ -328,6 +335,7 @@ impl InProcessBenchmarkRunner {
                     .with_cache_policy(Box::new(LiquidPolicy::new()))
                     .with_hydration_policy(Box::new(NoHydration::new()))
                     .with_squeeze_policy(Box::new(Evict))
+                    .with_skip_string_columns(self.skip_string_columns)
                     .build(session_config)
                     .await?;
                 (v.0, Some(v.1))
@@ -339,6 +347,7 @@ impl InProcessBenchmarkRunner {
                     .with_cache_policy(Box::new(LiquidPolicy::new()))
                     .with_hydration_policy(Box::new(NoHydration::new()))
                     .with_squeeze_policy(Box::new(TranscodeSqueezeEvict))
+                    .with_skip_string_columns(self.skip_string_columns)
                     .build(session_config)
                     .await?;
                 (v.0, Some(v.1))
@@ -350,6 +359,7 @@ impl InProcessBenchmarkRunner {
                     .with_cache_policy(Box::new(LiquidPolicy::new()))
                     .with_hydration_policy(Box::new(NoHydration::new()))
                     .with_squeeze_policy(Box::new(TranscodeEvict))
+                    .with_skip_string_columns(self.skip_string_columns)
                     .build(session_config)
                     .await?;
                 (v.0, Some(v.1))

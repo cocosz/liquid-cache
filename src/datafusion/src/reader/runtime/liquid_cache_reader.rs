@@ -54,7 +54,10 @@ struct LiquidCacheReaderInner {
     batch_size: usize,
     projection_columns: Vec<usize>,
     parquet_fallback: ParquetFallback,
+    /// Lightweight fallback for passthrough (skipped) columns only.
+    passthrough_fallback: Option<ParquetFallback>,
     last_pull: Option<(BatchID, RecordBatch)>,
+    last_passthrough_pull: Option<(BatchID, RecordBatch)>,
 }
 
 pub(crate) struct LiquidCacheReaderConfig {
@@ -65,6 +68,8 @@ pub(crate) struct LiquidCacheReaderConfig {
     pub(crate) projection_columns: Vec<usize>,
     pub(crate) schema: SchemaRef,
     pub(crate) parquet_fallback: ParquetFallbackConfig,
+    /// Separate fallback for passthrough (skipped) columns — reads only string columns from Parquet.
+    pub(crate) passthrough_fallback: Option<ParquetFallbackConfig>,
 }
 
 #[derive(Clone)]
@@ -92,6 +97,7 @@ struct ParquetFallback {
 
 impl LiquidCacheReader {
     pub(crate) fn new(config: LiquidCacheReaderConfig) -> Self {
+        let passthrough = config.passthrough_fallback.map(ParquetFallback::new);
         let inner = LiquidCacheReaderInner::new(
             config.batch_size,
             config.selection,
@@ -99,6 +105,7 @@ impl LiquidCacheReader {
             config.projection_columns,
             Arc::clone(&config.schema),
             ParquetFallback::new(config.parquet_fallback),
+            passthrough,
         );
         Self {
             state: ReaderState::Ready(Box::new(inner)),
@@ -248,6 +255,7 @@ impl LiquidCacheReaderInner {
         projection_columns: Vec<usize>,
         schema: SchemaRef,
         parquet_fallback: ParquetFallback,
+        passthrough_fallback: Option<ParquetFallback>,
     ) -> Self {
         Self {
             cached_row_group,
@@ -257,7 +265,9 @@ impl LiquidCacheReaderInner {
             batch_size,
             projection_columns,
             parquet_fallback,
+            passthrough_fallback,
             last_pull: None,
+            last_passthrough_pull: None,
         }
     }
 
@@ -270,6 +280,7 @@ impl LiquidCacheReaderInner {
             let mut inner = self;
             let mut row_filter = row_filter;
             inner.last_pull = None;
+            inner.last_passthrough_pull = None;
 
             let result = match inner
                 .build_predicate_filter(&mut row_filter, selection)
@@ -374,8 +385,9 @@ impl LiquidCacheReaderInner {
             let array = match array {
                 Some(array) => array,
                 None => {
+                    let fill_cache = !column.is_skip_caching();
                     let record_batch = self
-                        .read_parquet_batch_and_fill_cache(self.current_batch_id)
+                        .read_parquet_batch_and_fill_cache(self.current_batch_id, fill_cache)
                         .await?;
                     let array = self.parquet_array(&record_batch, column_idx)?;
                     filter_array(array, selection)?
@@ -390,9 +402,36 @@ impl LiquidCacheReaderInner {
         ))
     }
 
+    /// Read only the passthrough (skipped) columns from Parquet.
+    /// This is lightweight — only reads string columns, not all 105 columns.
+    async fn read_passthrough_batch(
+        &mut self,
+        batch_id: BatchID,
+    ) -> Result<RecordBatch, ArrowError> {
+        if let Some((pulled_batch_id, record_batch)) = &self.last_passthrough_pull
+            && *pulled_batch_id == batch_id
+        {
+            return Ok(record_batch.clone());
+        }
+
+        let fallback = self
+            .passthrough_fallback
+            .as_mut()
+            .expect("passthrough_fallback must be set when skip_caching columns exist");
+
+        let record_batch = fallback
+            .fetch_batch(batch_id)
+            .await
+            .map_err(|e| ArrowError::ComputeError(format!("passthrough read failed: {e}")))?;
+
+        self.last_passthrough_pull = Some((batch_id, record_batch.clone()));
+        Ok(record_batch)
+    }
+
     async fn read_parquet_batch_and_fill_cache(
         &mut self,
         batch_id: BatchID,
+        fill_cache: bool,
     ) -> Result<RecordBatch, ArrowError> {
         if let Some((pulled_batch_id, record_batch)) = &self.last_pull
             && *pulled_batch_id == batch_id
@@ -406,26 +445,28 @@ impl LiquidCacheReaderInner {
             .await
             .map_err(|e| ArrowError::ComputeError(format!("parquet fallback read failed: {e}")))?;
 
-        for (col_idx, file_column_id) in self
-            .parquet_fallback
-            .cache_column_ids
-            .iter()
-            .copied()
-            .enumerate()
-        {
-            let column = self
-                .cached_row_group
-                .get_column(file_column_id as u64)
-                .ok_or_else(|| {
-                    ArrowError::ComputeError(format!(
-                        "column {file_column_id} not present in liquid cache"
-                    ))
-                })?;
-            let array = Arc::clone(record_batch.column(col_idx));
+        if fill_cache {
+            for (col_idx, file_column_id) in self
+                .parquet_fallback
+                .cache_column_ids
+                .iter()
+                .copied()
+                .enumerate()
+            {
+                let column = self
+                    .cached_row_group
+                    .get_column(file_column_id as u64)
+                    .ok_or_else(|| {
+                        ArrowError::ComputeError(format!(
+                            "column {file_column_id} not present in liquid cache"
+                        ))
+                    })?;
+                let array = Arc::clone(record_batch.column(col_idx));
 
-            match column.insert(batch_id, array).await {
-                Ok(()) | Err(InsertArrowArrayError::AlreadyCached) => {}
-                Err(InsertArrowArrayError::CacheFull) => {}
+                match column.insert(batch_id, array).await {
+                    Ok(()) | Err(InsertArrowArrayError::AlreadyCached) => {}
+                    Err(InsertArrowArrayError::CacheFull) => {}
+                }
             }
         }
 
@@ -439,7 +480,7 @@ impl LiquidCacheReaderInner {
         predicate: &mut crate::reader::LiquidPredicate,
     ) -> Result<BooleanArray, ArrowError> {
         let record_batch = self
-            .read_parquet_batch_and_fill_cache(self.current_batch_id)
+            .read_parquet_batch_and_fill_cache(self.current_batch_id, true)
             .await?;
 
         if let Some(result) = self
@@ -564,6 +605,7 @@ mod tests {
                 projection_columns: request.projection_columns,
                 schema: request.schema,
                 parquet_fallback: self.fallback.clone(),
+                passthrough_fallback: None,
             })
         }
     }
