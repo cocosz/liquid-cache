@@ -210,8 +210,10 @@ impl CachedColumn {
             .read()
             .await;
         if result.is_some() {
+            log::debug!("[CACHE HIT] column={}, batch={}", self.field.name(), *batch_id);
             self.cache_store.observer().runtime_stats().incr_cache_hit();
         } else {
+            log::debug!("[CACHE MISS] column={}, batch={}", self.field.name(), *batch_id);
             self.cache_store.observer().runtime_stats().incr_cache_miss();
         }
         result
@@ -241,6 +243,8 @@ impl CachedColumn {
         if self.is_cached(batch_id) {
             return Err(InsertArrowArrayError::AlreadyCached);
         }
+
+        log::info!("[CACHE INSERT] column={}, batch={}", self.field.name(), *batch_id);
 
         self.cache_store
             .insert(self.entry_id(batch_id).into(), array)
