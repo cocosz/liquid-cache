@@ -198,6 +198,10 @@ impl CachedColumn {
         if self.skip_caching {
             return None;
         }
+        // EXPERIMENT: Only read from cache for EventDate
+        if self.field.name() != "EventDate" {
+            return None;
+        }
         let entry_id = self.entry_id(batch_id).into();
         self.cache_store
             .get(&entry_id)
@@ -222,6 +226,12 @@ impl CachedColumn {
         if self.skip_caching {
             return Err(InsertArrowArrayError::CacheFull);
         }
+
+        // EXPERIMENT: Only cache EventDate column
+        if self.field.name() != "EventDate" {
+            return Err(InsertArrowArrayError::CacheFull);
+        }
+
         if self.is_cached(batch_id) {
             return Err(InsertArrowArrayError::AlreadyCached);
         }

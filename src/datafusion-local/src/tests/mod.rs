@@ -483,22 +483,13 @@ async fn test_provide_schema_with_filter() {
 #[tokio::test]
 async fn test_skip_string_columns_only_caches_numerics() {
     let cache_dir = TempDir::new().unwrap();
-    let mut config = SessionConfig::new();
-    config.options_mut().execution.target_partitions = 1;
 
-    let (ctx, cache) = LiquidCacheLocalBuilder::new()
-        .with_max_memory_bytes(1024 * 1024 * 100) // 100MB — plenty for numerics
-        .with_cache_dir(cache_dir.path().to_path_buf())
-        .with_squeeze_policy(Box::new(TranscodeSqueezeEvict))
-        .with_skip_string_columns(true)
-        .build(config)
-        .await
-        .unwrap();
-
-    // Register test file (nano_hits.parquet has both numeric and string columns)
-    ctx.register_parquet("hits", TEST_FILE, ParquetReadOptions::default())
-        .await
-        .unwrap();
+    let (ctx, cache) = create_session_context_with_liquid_cache_skip_strings(
+        1024 * 1024 * 100,
+        cache_dir.path(),
+    )
+    .await
+    .unwrap();
 
     // Run a query that touches both numeric and string columns
     let df = ctx
@@ -523,7 +514,6 @@ async fn test_skip_string_columns_only_caches_numerics() {
     );
 
     // Verify: URL (string) should NOT be cached, but UserID/AdvEngineID (numeric) should be.
-    // With skip_string_columns, the cached file should not have URL entries.
     let file = cache.register_or_get_file(TEST_FILE.to_string(), Arc::new(Schema::new(vec![
         Field::new("URL", DataType::Utf8, true),
         Field::new("UserID", DataType::Int64, false),
@@ -540,4 +530,65 @@ async fn test_skip_string_columns_only_caches_numerics() {
     // Numerics should not be skipped
     assert!(!userid_col.is_skip_caching(), "UserID (Int64) should have skip_caching=false");
     assert!(!adv_col.is_skip_caching(), "AdvEngineID (Int16) should have skip_caching=false");
+}
+
+async fn create_session_context_with_liquid_cache_skip_strings(
+    cache_size_bytes: usize,
+    cache_dir: &Path,
+) -> Result<(SessionContext, LiquidCacheParquetRef)> {
+    let mut config = SessionConfig::new();
+    config.options_mut().execution.target_partitions = 4;
+    let (ctx, cache) = LiquidCacheLocalBuilder::new()
+        .with_max_memory_bytes(cache_size_bytes)
+        .with_cache_dir(cache_dir.to_path_buf())
+        .with_squeeze_policy(Box::new(TranscodeSqueezeEvict))
+        .with_cache_policy(Box::new(LiquidPolicy::new()))
+        .with_skip_string_columns(true)
+        .build(config)
+        .await?;
+
+    ctx.register_parquet("hits", TEST_FILE, ParquetReadOptions::default())
+        .await
+        .unwrap();
+
+    Ok((ctx, cache))
+}
+
+#[tokio::test]
+async fn test_only_eventdate_cached() {
+    let cache_dir = TempDir::new().unwrap();
+
+    let (ctx, cache) = create_session_context_with_liquid_cache_skip_strings(
+        1024 * 1024 * 100, // 100MB
+        cache_dir.path(),
+    )
+    .await
+    .unwrap();
+
+    // Q42-like query using EventDate
+    let df = ctx
+        .sql(r#"SELECT "EventDate", COUNT(*) FROM hits WHERE "EventDate" >= 15000 GROUP BY "EventDate" LIMIT 5"#)
+        .await
+        .unwrap();
+    let results = df.collect().await.unwrap();
+    assert!(!results.is_empty(), "query should return results");
+
+    // Run again (hot)
+    let df = ctx
+        .sql(r#"SELECT "EventDate", COUNT(*) FROM hits WHERE "EventDate" >= 15000 GROUP BY "EventDate" LIMIT 5"#)
+        .await
+        .unwrap();
+    let _ = df.collect().await.unwrap();
+
+    // Check cache stats — only EventDate should be cached
+    let stats = cache.storage().stats();
+    println!("Cache stats: entries={}, mem={}MB, disk={}MB",
+        stats.total_entries,
+        stats.memory_usage_bytes / (1024*1024),
+        stats.disk_usage_bytes / (1024*1024));
+
+    // Should have entries (EventDate batches cached)
+    assert!(stats.total_entries > 0, "EventDate should be cached");
+    // Memory should be small (only one Int16 column)
+    assert!(stats.memory_usage_bytes < 50 * 1024 * 1024, "Only EventDate cached, should be <50MB");
 }
