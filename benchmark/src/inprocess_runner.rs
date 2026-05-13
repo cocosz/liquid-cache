@@ -200,6 +200,7 @@ pub struct InProcessBenchmarkRunner {
     pub cache_dir: Option<PathBuf>,
     pub output_dir: Option<PathBuf>,
     pub collect_perf_events: bool,
+    pub explain_analyze: bool,
 }
 
 impl Default for InProcessBenchmarkRunner {
@@ -221,6 +222,7 @@ impl InProcessBenchmarkRunner {
             cache_dir: None,
             output_dir: None,
             collect_perf_events: false,
+            explain_analyze: false,
         }
     }
 
@@ -271,6 +273,11 @@ impl InProcessBenchmarkRunner {
 
     pub fn with_output_dir(mut self, output_dir: Option<PathBuf>) -> Self {
         self.output_dir = output_dir;
+        self
+    }
+
+    pub fn with_explain_analyze(mut self, explain: bool) -> Self {
+        self.explain_analyze = explain;
         self
     }
 
@@ -521,6 +528,41 @@ impl InProcessBenchmarkRunner {
             }
         };
         let elapsed = now.elapsed();
+
+        // Print EXPLAIN ANALYZE if requested
+        if self.explain_analyze {
+            use datafusion::physical_plan::display::DisplayableExecutionPlan;
+            let displayable = DisplayableExecutionPlan::with_metrics(&*execution_plan);
+            println!(
+                "\n=== EXPLAIN ANALYZE (Query {}, Iteration {}) ===",
+                query.id(),
+                iteration
+            );
+            println!("{}", displayable.indent(true));
+            if let Some(c) = cache.as_ref() {
+                let stats = c.storage().stats();
+                println!(
+                    "Cache: entries={}, mem={}MB, disk={}MB",
+                    stats.total_entries,
+                    stats.memory_usage_bytes / (1024 * 1024),
+                    stats.disk_usage_bytes / (1024 * 1024)
+                );
+                println!(
+                    "  Hits: cache_hit={}, eval_predicate={}",
+                    stats.runtime.cache_hit, stats.runtime.eval_predicate
+                );
+                println!("  Misses: cache_miss={}", stats.runtime.cache_miss);
+                println!(
+                    "  IO: read={}, write={}",
+                    stats.runtime.read_io_count, stats.runtime.write_io_count
+                );
+                println!(
+                    "  Squeeze: squeezed_success={}, squeezed_needs_io={}",
+                    stats.runtime.get_squeezed_success, stats.runtime.get_squeezed_needs_io
+                );
+            }
+            println!("Time: {}ms\n", elapsed.as_millis());
+        }
 
         let perf_events = if let Some(collector) = perf_collector {
             match collector.stop() {

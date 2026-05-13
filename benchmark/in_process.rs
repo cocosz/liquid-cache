@@ -65,6 +65,10 @@ struct InProcessBenchmark {
     /// Jaeger OTLP gRPC endpoint (for example: http://localhost:4317)
     #[arg(long = "jaeger-endpoint")]
     pub jaeger_endpoint: Option<String>,
+
+    /// Print EXPLAIN ANALYZE plan and cache stats after each iteration
+    #[arg(long = "explain-analyze", default_value_t = false)]
+    pub explain_analyze: bool,
 }
 
 impl InProcessBenchmark {
@@ -82,7 +86,8 @@ impl InProcessBenchmark {
             .with_flamegraph_dir(self.flamegraph_dir.clone())
             .with_cache_dir(self.cache_dir.clone())
             .with_query_filter(self.query_index)
-            .with_output_dir(self.output_dir.clone());
+            .with_output_dir(self.output_dir.clone())
+            .with_explain_analyze(self.explain_analyze);
         runner.run(manifest, self, output).await?;
         Ok(())
     }

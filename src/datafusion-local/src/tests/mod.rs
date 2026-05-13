@@ -479,3 +479,133 @@ async fn test_provide_schema_with_filter() {
     }
     assert_eq!(formatted_results, reference);
 }
+
+/// Test that only predicate (WHERE clause) columns are cached.
+/// Projection-only columns should NOT be cached — they read from Parquet directly.
+#[tokio::test]
+async fn test_predicate_only_caching() {
+    let cache_dir = TempDir::new().unwrap();
+
+    // Query: WHERE on "OS" (predicate column), SELECT "URL" (projection-only column)
+    let sql = r#"SELECT "URL" FROM hits WHERE "OS" > 0 ORDER BY "URL" LIMIT 5"#;
+
+    let mut config = SessionConfig::new();
+    config.options_mut().execution.target_partitions = 2;
+    let (ctx, cache) = LiquidCacheLocalBuilder::new()
+        .with_max_memory_bytes(usize::MAX)
+        .with_cache_dir(cache_dir.path().to_path_buf())
+        .with_squeeze_policy(Box::new(TranscodeSqueezeEvict))
+        .with_cache_policy(Box::new(LiquidPolicy::new()))
+        .build(config)
+        .await
+        .unwrap();
+
+    ctx.register_parquet("hits", TEST_FILE, ParquetReadOptions::default())
+        .await
+        .unwrap();
+
+    // First run: fills cache
+    let plan = get_physical_plan(sql, &ctx).await;
+    let batches_1 = collect(plan, ctx.task_ctx()).await.unwrap();
+    let result_1 = pretty_format_batches(&batches_1).unwrap().to_string();
+
+    let stats_after_first = cache.storage().stats();
+    let entries_after_first = stats_after_first.total_entries;
+
+    // Should have cached ONLY OS (predicate column) batches, NOT URL
+    // With nano_hits.parquet (1 row group), we expect a small number of entries
+    // corresponding to OS batches only.
+    assert!(
+        entries_after_first > 0,
+        "Cache should have entries for predicate column OS"
+    );
+
+    // Second run: should reuse cache for predicate evaluation
+    let plan = get_physical_plan(sql, &ctx).await;
+    let batches_2 = collect(plan, ctx.task_ctx()).await.unwrap();
+    let result_2 = pretty_format_batches(&batches_2).unwrap().to_string();
+
+    // Results must be identical
+    assert_eq!(result_1, result_2, "Results should be the same on hot run");
+
+    let stats_after_second = cache.storage().stats();
+
+    // No new entries on second run (all predicate columns already cached)
+    assert_eq!(
+        stats_after_second.total_entries, entries_after_first,
+        "No new cache entries on hot run"
+    );
+
+    // eval_predicate should be > 0 (OS predicate evaluated from cache on 2nd run)
+    assert!(
+        stats_after_second.runtime.eval_predicate > 0,
+        "Predicate should be evaluated from cache on hot run, got eval_predicate={}",
+        stats_after_second.runtime.eval_predicate
+    );
+
+    // get (projection read) should be 0 — URL is not cached
+    assert_eq!(
+        stats_after_second.runtime.get, 0,
+        "Projection column URL should NOT be read from cache (get={})",
+        stats_after_second.runtime.get
+    );
+}
+
+/// Test that when a column is used in BOTH predicate AND projection,
+/// it IS cached and served from cache for both purposes.
+#[tokio::test]
+async fn test_predicate_column_in_projection_is_cached() {
+    let cache_dir = TempDir::new().unwrap();
+
+    // Query: OS is in both WHERE and SELECT
+    let sql = r#"SELECT "OS", COUNT(*) as cnt FROM hits WHERE "OS" > 0 GROUP BY "OS" ORDER BY cnt DESC LIMIT 5"#;
+
+    let mut config = SessionConfig::new();
+    config.options_mut().execution.target_partitions = 2;
+    let (ctx, cache) = LiquidCacheLocalBuilder::new()
+        .with_max_memory_bytes(usize::MAX)
+        .with_cache_dir(cache_dir.path().to_path_buf())
+        .with_squeeze_policy(Box::new(TranscodeSqueezeEvict))
+        .with_cache_policy(Box::new(LiquidPolicy::new()))
+        .build(config)
+        .await
+        .unwrap();
+
+    ctx.register_parquet("hits", TEST_FILE, ParquetReadOptions::default())
+        .await
+        .unwrap();
+
+    // First run: fills cache
+    let plan = get_physical_plan(sql, &ctx).await;
+    let batches_1 = collect(plan, ctx.task_ctx()).await.unwrap();
+    let result_1 = pretty_format_batches(&batches_1).unwrap().to_string();
+
+    // Clear counters
+    cache.storage().stats();
+
+    // Second run: should hit cache for BOTH predicate eval AND projection read
+    let plan = get_physical_plan(sql, &ctx).await;
+    let batches_2 = collect(plan, ctx.task_ctx()).await.unwrap();
+    let result_2 = pretty_format_batches(&batches_2).unwrap().to_string();
+
+    assert_eq!(result_1, result_2, "Results should be the same on hot run");
+
+    let stats = cache.storage().stats();
+
+    // OS is a predicate column → should be cached
+    // eval_predicate > 0 (WHERE clause evaluated from cache)
+    assert!(
+        stats.runtime.eval_predicate > 0,
+        "Predicate column OS should be evaluated from cache, got eval_predicate={}",
+        stats.runtime.eval_predicate
+    );
+
+    // OS is also in projection → get_with_selection > 0 or get > 0
+    // Since OS is a predicate column, it IS cached and should be read from cache
+    let projection_reads = stats.runtime.get + stats.runtime.get_with_selection;
+    assert!(
+        projection_reads > 0,
+        "Predicate column OS in projection should be read from cache, got get={}, get_with_selection={}",
+        stats.runtime.get, stats.runtime.get_with_selection
+    );
+}
