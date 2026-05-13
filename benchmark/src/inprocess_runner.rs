@@ -547,12 +547,20 @@ impl InProcessBenchmarkRunner {
             println!("{}", displayable.indent(true));
             if let Some(c) = cache.as_ref() {
                 let stats = c.storage().stats();
-                println!("Cache: entries={}, mem={}MB, disk={}MB, read_io={}, write_io={}",
+                println!("Cache: entries={}, mem={}MB, disk={}MB",
                     stats.total_entries,
                     stats.memory_usage_bytes / (1024*1024),
-                    stats.disk_usage_bytes / (1024*1024),
+                    stats.disk_usage_bytes / (1024*1024));
+                println!("  Hits: get={}, get_with_selection={}, eval_predicate={}",
+                    stats.runtime.get,
+                    stats.runtime.get_with_selection,
+                    stats.runtime.eval_predicate);
+                println!("  IO: read={}, write={}",
                     stats.runtime.read_io_count,
                     stats.runtime.write_io_count);
+                println!("  Squeeze: squeezed_success={}, squeezed_needs_io={}",
+                    stats.runtime.get_squeezed_success,
+                    stats.runtime.get_squeezed_needs_io);
             }
             println!("Time: {}ms\n", elapsed.as_millis());
         }
