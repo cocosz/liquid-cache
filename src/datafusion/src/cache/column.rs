@@ -203,12 +203,18 @@ impl CachedColumn {
             return None;
         }
         let entry_id = self.entry_id(batch_id).into();
-        self.cache_store
+        let result = self.cache_store
             .get(&entry_id)
             .with_selection(filter)
             .with_optional_expression_hint(self.expression())
             .read()
-            .await
+            .await;
+        if result.is_some() {
+            self.cache_store.observer().runtime_stats().incr_cache_hit();
+        } else {
+            self.cache_store.observer().runtime_stats().incr_cache_miss();
+        }
+        result
     }
 
     #[cfg(test)]

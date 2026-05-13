@@ -551,10 +551,11 @@ impl InProcessBenchmarkRunner {
                     stats.total_entries,
                     stats.memory_usage_bytes / (1024*1024),
                     stats.disk_usage_bytes / (1024*1024));
-                println!("  Hits: get={}, get_with_selection={}, eval_predicate={}",
-                    stats.runtime.get,
-                    stats.runtime.get_with_selection,
-                    stats.runtime.eval_predicate);
+                println!("  Hits: cache_hit={} (data) + eval_predicate={} (pushdown) = {} total",
+                    stats.runtime.cache_hit,
+                    stats.runtime.eval_predicate,
+                    stats.runtime.cache_hit + stats.runtime.eval_predicate);
+                println!("  Misses: cache_miss={}", stats.runtime.cache_miss);
                 println!("  IO: read={}, write={}",
                     stats.runtime.read_io_count,
                     stats.runtime.write_io_count);
