@@ -479,3 +479,65 @@ async fn test_provide_schema_with_filter() {
     }
     assert_eq!(formatted_results, reference);
 }
+
+#[tokio::test]
+async fn test_skip_string_columns_only_caches_numerics() {
+    let cache_dir = TempDir::new().unwrap();
+    let mut config = SessionConfig::new();
+    config.options_mut().execution.target_partitions = 1;
+
+    let (ctx, cache) = LiquidCacheLocalBuilder::new()
+        .with_max_memory_bytes(1024 * 1024 * 100) // 100MB — plenty for numerics
+        .with_cache_dir(cache_dir.path().to_path_buf())
+        .with_squeeze_policy(Box::new(TranscodeSqueezeEvict))
+        .with_skip_string_columns(true)
+        .build(config)
+        .await
+        .unwrap();
+
+    // Register test file (nano_hits.parquet has both numeric and string columns)
+    ctx.register_parquet("hits", TEST_FILE, ParquetReadOptions::default())
+        .await
+        .unwrap();
+
+    // Run a query that touches both numeric and string columns
+    let df = ctx
+        .sql(r#"SELECT "URL", "UserID", "AdvEngineID" FROM hits LIMIT 10"#)
+        .await
+        .unwrap();
+    let results = df.collect().await.unwrap();
+    assert!(!results.is_empty(), "query should return results");
+
+    // Run again to ensure warm cache
+    let df = ctx
+        .sql(r#"SELECT "URL", "UserID", "AdvEngineID" FROM hits LIMIT 10"#)
+        .await
+        .unwrap();
+    let _ = df.collect().await.unwrap();
+
+    // Check cache stats
+    let stats = cache.storage().stats();
+    assert!(
+        stats.total_entries > 0,
+        "some entries should be cached"
+    );
+
+    // Verify: URL (string) should NOT be cached, but UserID/AdvEngineID (numeric) should be.
+    // With skip_string_columns, the cached file should not have URL entries.
+    let file = cache.register_or_get_file(TEST_FILE.to_string(), Arc::new(Schema::new(vec![
+        Field::new("URL", DataType::Utf8, true),
+        Field::new("UserID", DataType::Int64, false),
+        Field::new("AdvEngineID", DataType::Int16, false),
+    ])));
+    let row_group = file.create_row_group(0, vec![]);
+
+    let url_col = row_group.get_column_by_name("URL").unwrap();
+    let userid_col = row_group.get_column_by_name("UserID").unwrap();
+    let adv_col = row_group.get_column_by_name("AdvEngineID").unwrap();
+
+    // URL is string — should be marked as skip
+    assert!(url_col.is_skip_caching(), "URL (string) should have skip_caching=true");
+    // Numerics should not be skipped
+    assert!(!userid_col.is_skip_caching(), "UserID (Int64) should have skip_caching=false");
+    assert!(!adv_col.is_skip_caching(), "AdvEngineID (Int16) should have skip_caching=false");
+}
