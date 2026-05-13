@@ -69,6 +69,10 @@ struct InProcessBenchmark {
     /// Skip caching string/binary columns — read them from Parquet directly
     #[arg(long = "skip-string-columns", default_value_t = false)]
     pub skip_string_columns: bool,
+
+    /// Print EXPLAIN ANALYZE plan for each iteration
+    #[arg(long = "explain-analyze", default_value_t = false)]
+    pub explain_analyze: bool,
 }
 
 impl InProcessBenchmark {
@@ -87,7 +91,8 @@ impl InProcessBenchmark {
             .with_cache_dir(self.cache_dir.clone())
             .with_query_filter(self.query_index)
             .with_output_dir(self.output_dir.clone())
-            .with_skip_string_columns(self.skip_string_columns);
+            .with_skip_string_columns(self.skip_string_columns)
+            .with_explain_analyze(self.explain_analyze);
         runner.run(manifest, self, output).await?;
         Ok(())
     }

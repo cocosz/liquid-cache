@@ -201,6 +201,7 @@ pub struct InProcessBenchmarkRunner {
     pub output_dir: Option<PathBuf>,
     pub collect_perf_events: bool,
     pub skip_string_columns: bool,
+    pub explain_analyze: bool,
 }
 
 impl Default for InProcessBenchmarkRunner {
@@ -223,6 +224,7 @@ impl InProcessBenchmarkRunner {
             output_dir: None,
             collect_perf_events: false,
             skip_string_columns: false,
+            explain_analyze: false,
         }
     }
 
@@ -278,6 +280,11 @@ impl InProcessBenchmarkRunner {
 
     pub fn with_skip_string_columns(mut self, skip: bool) -> Self {
         self.skip_string_columns = skip;
+        self
+    }
+
+    pub fn with_explain_analyze(mut self, explain: bool) -> Self {
+        self.explain_analyze = explain;
         self
     }
 
@@ -531,6 +538,24 @@ impl InProcessBenchmarkRunner {
             }
         };
         let elapsed = now.elapsed();
+
+        // Print EXPLAIN ANALYZE if requested
+        if self.explain_analyze {
+            use datafusion::physical_plan::display::DisplayableExecutionPlan;
+            let displayable = DisplayableExecutionPlan::with_metrics(&*execution_plan);
+            println!("\n=== EXPLAIN ANALYZE (Query {}, Iteration {}) ===", query.id(), iteration);
+            println!("{}", displayable.indent(true));
+            if let Some(c) = cache.as_ref() {
+                let stats = c.storage().stats();
+                println!("Cache: entries={}, mem={}MB, disk={}MB, read_io={}, write_io={}",
+                    stats.total_entries,
+                    stats.memory_usage_bytes / (1024*1024),
+                    stats.disk_usage_bytes / (1024*1024),
+                    stats.runtime.read_io_count,
+                    stats.runtime.write_io_count);
+            }
+            println!("Time: {}ms\n", elapsed.as_millis());
+        }
 
         let perf_events = if let Some(collector) = perf_collector {
             match collector.stop() {

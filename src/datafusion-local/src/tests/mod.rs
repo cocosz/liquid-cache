@@ -592,3 +592,45 @@ async fn test_only_eventdate_cached() {
     // Memory should be small (only one Int16 column)
     assert!(stats.memory_usage_bytes < 50 * 1024 * 1024, "Only EventDate cached, should be <50MB");
 }
+
+#[tokio::test]
+async fn test_eventdate_explain_analyze_cold_vs_hot() {
+    let cache_dir = TempDir::new().unwrap();
+
+    let (ctx, cache) = create_session_context_with_liquid_cache_skip_strings(
+        1024 * 1024 * 100, // 100MB
+        cache_dir.path(),
+    )
+    .await
+    .unwrap();
+
+    let query = r#"SELECT "EventDate", COUNT(*) AS c FROM hits WHERE "EventDate" >= 15000 GROUP BY "EventDate" ORDER BY c DESC LIMIT 5"#;
+
+    // Cold run — first execution populates cache
+    let df = ctx.sql(&format!("EXPLAIN ANALYZE {query}")).await.unwrap();
+    let results = df.collect().await.unwrap();
+    let cold_plan = pretty_format_batches(&results).unwrap().to_string();
+    println!("=== COLD RUN PLAN ===\n{cold_plan}\n");
+
+    let stats_after_cold = cache.storage().stats();
+    println!("Cache after cold: entries={}, mem={}B", stats_after_cold.total_entries, stats_after_cold.memory_usage_bytes);
+
+    // Hot run — should read from cache (no Parquet I/O for EventDate)
+    let df = ctx.sql(&format!("EXPLAIN ANALYZE {query}")).await.unwrap();
+    let results = df.collect().await.unwrap();
+    let hot_plan = pretty_format_batches(&results).unwrap().to_string();
+    println!("=== HOT RUN PLAN ===\n{hot_plan}\n");
+
+    let stats_after_hot = cache.storage().stats();
+    println!("Cache after hot: entries={}, mem={}B", stats_after_hot.total_entries, stats_after_hot.memory_usage_bytes);
+
+    // Verify: entries should be the same (no new inserts on hot run)
+    assert_eq!(
+        stats_after_cold.total_entries,
+        stats_after_hot.total_entries,
+        "Hot run should not create new cache entries"
+    );
+
+    // Verify: cache has entries (EventDate is cached)
+    assert!(stats_after_hot.total_entries > 0, "EventDate should be cached");
+}
