@@ -609,3 +609,76 @@ async fn test_predicate_column_in_projection_is_cached() {
         stats.runtime.get, stats.runtime.get_with_selection
     );
 }
+
+/// Test that string predicate columns are NOT cached (only numeric predicates are cached).
+/// Query uses a string predicate (URL LIKE) and a numeric predicate (OS > 0).
+/// Only the numeric predicate column should be cached.
+#[tokio::test]
+async fn test_only_numeric_predicate_columns_cached() {
+    let cache_dir = TempDir::new().unwrap();
+
+    // Query: WHERE on "URL" (string predicate) AND "OS" (numeric predicate), SELECT "OS"
+    // Only OS should be cached; URL is a string predicate and should NOT be cached.
+    let sql = r#"SELECT "OS" FROM hits WHERE "URL" LIKE '%tours%' AND "OS" > 0 ORDER BY "OS" LIMIT 5"#;
+
+    let mut config = SessionConfig::new();
+    config.options_mut().execution.target_partitions = 2;
+    let (ctx, cache) = LiquidCacheLocalBuilder::new()
+        .with_max_memory_bytes(usize::MAX)
+        .with_cache_dir(cache_dir.path().to_path_buf())
+        .with_squeeze_policy(Box::new(TranscodeSqueezeEvict))
+        .with_cache_policy(Box::new(LiquidPolicy::new()))
+        .build(config)
+        .await
+        .unwrap();
+
+    ctx.register_parquet("hits", TEST_FILE, ParquetReadOptions::default())
+        .await
+        .unwrap();
+
+    // First run: fills cache (only numeric predicate columns)
+    let plan = get_physical_plan(sql, &ctx).await;
+    let batches_1 = collect(plan, ctx.task_ctx()).await.unwrap();
+    let result_1 = pretty_format_batches(&batches_1).unwrap().to_string();
+
+    let stats_after_first = cache.storage().stats();
+    let entries_after_first = stats_after_first.total_entries;
+
+    // Should have cached only OS (numeric predicate), NOT URL (string predicate)
+    assert!(
+        entries_after_first > 0,
+        "Cache should have entries for numeric predicate column OS"
+    );
+
+    // The memory should be small — OS is Int16, not a large string column.
+    // If URL were cached, memory would be much larger (URL is a huge string column).
+    // OS column for nano_hits: ~1000 rows × 2 bytes = ~2KB per batch.
+    // URL column would be megabytes. So we check memory is modest.
+    assert!(
+        stats_after_first.memory_usage_bytes < 1024 * 1024, // less than 1MB
+        "Cache should be small (only OS cached, not URL). Got {} bytes",
+        stats_after_first.memory_usage_bytes
+    );
+
+    // Second run: should reuse cache
+    let plan = get_physical_plan(sql, &ctx).await;
+    let batches_2 = collect(plan, ctx.task_ctx()).await.unwrap();
+    let result_2 = pretty_format_batches(&batches_2).unwrap().to_string();
+
+    assert_eq!(result_1, result_2, "Results should be identical on hot run");
+
+    let stats_after_second = cache.storage().stats();
+
+    // No new entries on second run
+    assert_eq!(
+        stats_after_second.total_entries, entries_after_first,
+        "No new cache entries on hot run"
+    );
+
+    // eval_predicate should be > 0 (OS numeric predicate evaluated from cache)
+    assert!(
+        stats_after_second.runtime.eval_predicate > 0,
+        "Numeric predicate OS should be evaluated from cache, got eval_predicate={}",
+        stats_after_second.runtime.eval_predicate
+    );
+}

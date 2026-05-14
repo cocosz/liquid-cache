@@ -175,13 +175,14 @@ impl CachedColumn {
     }
 
     /// Get an arrow array with a filter applied.
-    /// Returns None for non-predicate columns (they read from Parquet directly).
+    /// Returns None for non-predicate columns or string predicate columns
+    /// (only numeric predicate columns are cached and served from cache).
     pub async fn get_arrow_array_with_filter(
         &self,
         batch_id: BatchID,
         filter: &BooleanBuffer,
     ) -> Option<ArrayRef> {
-        if !self.is_predicate_column {
+        if !self.is_predicate_column || is_string_type(self.field.data_type()) {
             return None;
         }
         let entry_id = self.entry_id(batch_id).into();
@@ -207,13 +208,14 @@ impl CachedColumn {
     }
 
     /// Insert an array into the cache.
-    /// Only predicate columns are cached; non-predicate columns return CacheFull.
+    /// Only numeric predicate columns are cached; string predicates and
+    /// non-predicate columns return CacheFull.
     pub async fn insert(
         self: &Arc<Self>,
         batch_id: BatchID,
         array: ArrayRef,
     ) -> Result<(), InsertArrowArrayError> {
-        if !self.is_predicate_column {
+        if !self.is_predicate_column || is_string_type(self.field.data_type()) {
             return Err(InsertArrowArrayError::CacheFull);
         }
 
@@ -231,6 +233,7 @@ impl CachedColumn {
 fn is_string_type(data_type: &DataType) -> bool {
     match data_type {
         DataType::Utf8 | DataType::Utf8View | DataType::LargeUtf8 => true,
+        DataType::Binary | DataType::BinaryView | DataType::LargeBinary => true,
         DataType::Dictionary(_, value_type) => is_string_type(value_type.as_ref()),
         _ => false,
     }
