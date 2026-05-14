@@ -69,6 +69,10 @@ struct InProcessBenchmark {
     /// Print EXPLAIN ANALYZE plan and cache stats after each iteration
     #[arg(long = "explain-analyze", default_value_t = false)]
     pub explain_analyze: bool,
+
+    /// Cache eviction policy: s3fifo (default) or lru
+    #[arg(long = "cache-policy", default_value = "s3fifo")]
+    pub cache_policy: String,
 }
 
 impl InProcessBenchmark {
@@ -87,7 +91,8 @@ impl InProcessBenchmark {
             .with_cache_dir(self.cache_dir.clone())
             .with_query_filter(self.query_index)
             .with_output_dir(self.output_dir.clone())
-            .with_explain_analyze(self.explain_analyze);
+            .with_explain_analyze(self.explain_analyze)
+            .with_cache_policy(&self.cache_policy);
         runner.run(manifest, self, output).await?;
         Ok(())
     }

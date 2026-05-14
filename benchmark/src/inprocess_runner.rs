@@ -10,7 +10,7 @@ use datafusion::parquet::{
 use datafusion::prelude::{SessionConfig, SessionContext};
 use liquid_cache::cache::NoHydration;
 use liquid_cache::cache::squeeze_policies::{Evict, TranscodeEvict, TranscodeSqueezeEvict};
-use liquid_cache::cache_policies::LiquidPolicy;
+use liquid_cache::cache_policies::{LiquidPolicy, LruPolicy};
 use liquid_cache_datafusion::{LiquidCacheParquetRef, extract_execution_metrics};
 use liquid_cache_datafusion_local::LiquidCacheLocalBuilder;
 use log::{info, warn};
@@ -201,6 +201,7 @@ pub struct InProcessBenchmarkRunner {
     pub output_dir: Option<PathBuf>,
     pub collect_perf_events: bool,
     pub explain_analyze: bool,
+    pub cache_policy: String,
 }
 
 impl Default for InProcessBenchmarkRunner {
@@ -223,6 +224,7 @@ impl InProcessBenchmarkRunner {
             output_dir: None,
             collect_perf_events: false,
             explain_analyze: false,
+            cache_policy: "s3fifo".to_string(),
         }
     }
 
@@ -281,6 +283,11 @@ impl InProcessBenchmarkRunner {
         self
     }
 
+    pub fn with_cache_policy(mut self, policy: &str) -> Self {
+        self.cache_policy = policy.to_string();
+        self
+    }
+
     #[fastrace::trace]
     async fn setup_context(
         &self,
@@ -329,10 +336,15 @@ impl InProcessBenchmarkRunner {
                 (SessionContext::new_with_config(SessionConfig::new()), None)
             }
             InProcessBenchmarkMode::Arrow => {
+                let cache_policy: Box<dyn liquid_cache::cache::CachePolicy> = if self.cache_policy == "lru" {
+                    Box::new(LruPolicy::new())
+                } else {
+                    Box::new(LiquidPolicy::new())
+                };
                 let v = LiquidCacheLocalBuilder::new()
                     .with_max_memory_bytes(cache_size)
                     .with_cache_dir(cache_dir)
-                    .with_cache_policy(Box::new(LiquidPolicy::new()))
+                    .with_cache_policy(cache_policy)
                     .with_hydration_policy(Box::new(NoHydration::new()))
                     .with_squeeze_policy(Box::new(Evict))
                     .build(session_config)
@@ -340,10 +352,15 @@ impl InProcessBenchmarkRunner {
                 (v.0, Some(v.1))
             }
             InProcessBenchmarkMode::Liquid => {
+                let cache_policy: Box<dyn liquid_cache::cache::CachePolicy> = if self.cache_policy == "lru" {
+                    Box::new(LruPolicy::new())
+                } else {
+                    Box::new(LiquidPolicy::new())
+                };
                 let v = LiquidCacheLocalBuilder::new()
                     .with_max_memory_bytes(cache_size)
                     .with_cache_dir(cache_dir)
-                    .with_cache_policy(Box::new(LiquidPolicy::new()))
+                    .with_cache_policy(cache_policy)
                     .with_hydration_policy(Box::new(NoHydration::new()))
                     .with_squeeze_policy(Box::new(TranscodeSqueezeEvict))
                     .build(session_config)
@@ -351,10 +368,15 @@ impl InProcessBenchmarkRunner {
                 (v.0, Some(v.1))
             }
             InProcessBenchmarkMode::LiquidNoSqueeze => {
+                let cache_policy: Box<dyn liquid_cache::cache::CachePolicy> = if self.cache_policy == "lru" {
+                    Box::new(LruPolicy::new())
+                } else {
+                    Box::new(LiquidPolicy::new())
+                };
                 let v = LiquidCacheLocalBuilder::new()
                     .with_max_memory_bytes(cache_size)
                     .with_cache_dir(cache_dir)
-                    .with_cache_policy(Box::new(LiquidPolicy::new()))
+                    .with_cache_policy(cache_policy)
                     .with_hydration_policy(Box::new(NoHydration::new()))
                     .with_squeeze_policy(Box::new(TranscodeEvict))
                     .build(session_config)
