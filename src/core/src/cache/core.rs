@@ -169,11 +169,9 @@ impl LiquidCache {
                 SqueezedBacking::Arrow(_) => None,
             },
             CacheEntry::DiskArrow { .. } | CacheEntry::MemoryArrow(_) => None,
-            // DiskCoalesced stores liquid data; read it as a liquid array
-            entry @ CacheEntry::DiskCoalesced { .. } => {
+            // DiskCoalesced stores liquid data; read without hydration to avoid thrashing.
+            CacheEntry::DiskCoalesced { .. } => {
                 let liquid = self.read_disk_liquid_array(entry_id).await;
-                self.maybe_hydrate(entry_id, entry, MaterializedEntry::Liquid(&liquid), None)
-                    .await;
                 Some(liquid)
             }
         }
@@ -798,15 +796,8 @@ impl LiquidCache {
                 {
                     return Some(arrow::array::new_empty_array(data_type));
                 }
-                // DiskCoalesced stores liquid data; read via the liquid path
+                // Read without hydration to avoid thrashing the coalesced blob.
                 let liquid = self.read_disk_liquid_array(entry_id).await;
-                self.maybe_hydrate(
-                    entry_id,
-                    entry,
-                    MaterializedEntry::Liquid(&liquid),
-                    expression,
-                )
-                .await;
                 match selection {
                     Some(selection) => Some(liquid.filter(selection)),
                     None => Some(liquid.to_arrow_array()),
@@ -1170,10 +1161,8 @@ impl LiquidCache {
                 self.eval_predicate_on_squeezed(array, selection_opt, predicate)
                     .await
             }
-            entry @ CacheEntry::DiskCoalesced { .. } => {
+            CacheEntry::DiskCoalesced { .. } => {
                 let liquid = self.read_disk_liquid_array(entry_id).await;
-                self.maybe_hydrate(entry_id, entry, MaterializedEntry::Liquid(&liquid), None)
-                    .await;
                 let mut owned = None;
                 let selection = selection_opt.unwrap_or_else(|| {
                     owned = Some(BooleanBuffer::new_set(liquid.len()));
