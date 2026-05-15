@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
 
-export TMPDIR=/home/ec2-user/tmp
+export TMPDIR=${TMPDIR:-/home/ec2-user/tmp}
 mkdir -p $TMPDIR
+mkdir -p outputs/coalescing
 
 echo "=== Building release ==="
 cargo build --release --bin in_process
@@ -14,72 +15,70 @@ if [ ! -f benchmark/clickbench/data/hits.parquet ]; then
     exit 1
 fi
 
+QUERIES="7 19"
+MEMORY_CONFIGS="64 128 256 512"
+MODES="liquid liquid-no-squeeze"
+ITERATIONS=3
+
+for q in $QUERIES; do
+  for mem in $MEMORY_CONFIGS; do
+    for mode in $MODES; do
+      label="q${q}_${mode}_${mem}mb"
+      echo ""
+      echo "=== Q${q} ${mode} @ ${mem}MB ==="
+      ./target/release/in_process \
+        --manifest benchmark/clickbench/manifest.json \
+        --bench-mode $mode \
+        --max-memory-mb $mem \
+        --query-index $q \
+        --iteration $ITERATIONS \
+        --reset-cache \
+        --output outputs/coalescing/${label}.json
+    done
+  done
+done
+
+# DataFusion baseline (no cache, unlimited memory)
 echo ""
-echo "=== Running Q19 with liquid-no-squeeze @ 256MB (coalescing should activate) ==="
-echo "--- Iteration 1 (cold cache, fills + spills to disk) ---"
-./target/release/in_process \
-  --manifest benchmark/clickbench/manifest.json \
-  --bench-mode liquid-no-squeeze \
-  --max-memory-mb 256 \
-  --query-index 19 \
-  --iteration 3 \
-  --reset-cache \
-  --output /tmp/coalesce_q19_nosqueeze.json
+echo "=== DataFusion baseline ==="
+for q in $QUERIES; do
+  ./target/release/in_process \
+    --manifest benchmark/clickbench/manifest.json \
+    --bench-mode datafusion-default \
+    --query-index $q \
+    --iteration $ITERATIONS \
+    --output outputs/coalescing/q${q}_datafusion_baseline.json
+done
 
 echo ""
-echo "Results saved to /tmp/coalesce_q19_nosqueeze.json"
-echo ""
-
-echo "=== Running Q19 with liquid (squeeze) @ 256MB (baseline comparison) ==="
-./target/release/in_process \
-  --manifest benchmark/clickbench/manifest.json \
-  --bench-mode liquid \
-  --max-memory-mb 256 \
-  --query-index 19 \
-  --iteration 3 \
-  --reset-cache \
-  --output /tmp/coalesce_q19_squeeze.json
-
-echo ""
-echo "Results saved to /tmp/coalesce_q19_squeeze.json"
-echo ""
-
-echo "=== Running Q7 with liquid-no-squeeze @ 64MB (smaller budget, more spill) ==="
-./target/release/in_process \
-  --manifest benchmark/clickbench/manifest.json \
-  --bench-mode liquid-no-squeeze \
-  --max-memory-mb 64 \
-  --query-index 7 \
-  --iteration 3 \
-  --reset-cache \
-  --output /tmp/coalesce_q7_nosqueeze.json
-
-echo ""
+echo "============================================"
 echo "=== Summary ==="
-echo "Q19 liquid-no-squeeze (coalesced):"
-python3 -c "
-import json
-with open('/tmp/coalesce_q19_nosqueeze.json') as f:
-    d = json.load(f)
-for q in d.get('queries', d.get('results', [d])):
-    times = [i.get('elapsed_ms', i.get('duration_ms', 0)) for i in q.get('iterations', [])]
-    if times:
-        print(f'  iterations: {times}')
-        print(f'  avg: {sum(times)/len(times):.1f}ms')
-" 2>/dev/null || echo "  (parse output manually: cat /tmp/coalesce_q19_nosqueeze.json | python3 -m json.tool)"
+echo "============================================"
 
-echo ""
-echo "Q19 liquid-squeeze (baseline):"
-python3 -c "
-import json
-with open('/tmp/coalesce_q19_squeeze.json') as f:
-    d = json.load(f)
-for q in d.get('queries', d.get('results', [d])):
-    times = [i.get('elapsed_ms', i.get('duration_ms', 0)) for i in q.get('iterations', [])]
-    if times:
-        print(f'  iterations: {times}')
-        print(f'  avg: {sum(times)/len(times):.1f}ms')
-" 2>/dev/null || echo "  (parse output manually: cat /tmp/coalesce_q19_squeeze.json | python3 -m json.tool)"
+python3 << 'EOF'
+import json, os
 
-echo ""
-echo "=== Done. Check /tmp/coalesce_*.json for full results ==="
+results_dir = "outputs/coalescing"
+files = sorted(f for f in os.listdir(results_dir) if f.endswith(".json"))
+
+print(f"\n{'Config':<40} {'Iter1':>7} {'Iter2':>7} {'Iter3':>7} {'Avg':>7}  {'DiskR':>7} {'DiskW':>7}")
+print("-" * 105)
+
+for fname in files:
+    path = os.path.join(results_dir, fname)
+    with open(path) as f:
+        d = json.load(f)
+    for q in d["results"]:
+        iters = q["iteration_results"]
+        times = [r["time_millis"] for r in iters]
+        disk_r = sum(r["disk_bytes_read"] for r in iters) // len(iters) // 1024 // 1024
+        disk_w = sum(r["disk_bytes_written"] for r in iters) // len(iters) // 1024 // 1024
+        avg = sum(times) / len(times)
+        label = fname.replace(".json", "")
+        time_strs = "".join(f"{t:>7.0f}" for t in times)
+        print(f"{label:<40} {time_strs} {avg:>7.0f}  {disk_r:>5}MB {disk_w:>5}MB")
+
+print()
+EOF
+
+echo "=== Done. Full results in outputs/coalescing/ ==="
