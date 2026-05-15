@@ -74,11 +74,6 @@ impl CachedRowGroup {
         self.cache_store.config().batch_size()
     }
 
-    /// Returns a reference to the underlying cache store.
-    pub fn cache_store(&self) -> &Arc<LiquidCache> {
-        &self.cache_store
-    }
-
     /// Get a column from the row group.
     pub fn get_column(&self, column_id: u64) -> Option<CachedColumnRef> {
         self.columns.by_id.get(&column_id).cloned()

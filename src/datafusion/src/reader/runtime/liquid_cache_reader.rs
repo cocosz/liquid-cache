@@ -55,7 +55,6 @@ struct LiquidCacheReaderInner {
     projection_columns: Vec<usize>,
     parquet_fallback: ParquetFallback,
     last_pull: Option<(BatchID, RecordBatch)>,
-    prefetched: bool,
 }
 
 pub(crate) struct LiquidCacheReaderConfig {
@@ -259,7 +258,6 @@ impl LiquidCacheReaderInner {
             projection_columns,
             parquet_fallback,
             last_pull: None,
-            prefetched: false,
         }
     }
 
@@ -272,12 +270,6 @@ impl LiquidCacheReaderInner {
             let mut inner = self;
             let mut row_filter = row_filter;
             inner.last_pull = None;
-
-            // Prefetch disk entries on first batch to enable concurrent IO
-            if !inner.prefetched {
-                inner.prefetched = true;
-                prefetch_predicate_columns(&inner.cached_row_group, &row_filter).await;
-            }
 
             let result = match inner
                 .build_predicate_filter(&mut row_filter, selection)
@@ -441,40 +433,6 @@ impl LiquidCacheReaderInner {
         Ok(record_batch)
     }
 
-    /// Prefetch all disk-resident predicate column entries for this row group.
-    /// Issues concurrent IO for all batches, allowing io_uring to batch the reads.
-    async fn prefetch_predicate_columns(&self, row_filter: &Option<LiquidRowFilter>) {
-        let Some(filter) = row_filter.as_ref() else {
-            return;
-        };
-
-        let cache_store = self.cached_row_group.cache_store();
-
-        // Collect all entry IDs for predicate columns across all batches
-        let total_batches = (self.selection.len() + self.batch_size - 1) / self.batch_size;
-        let mut entry_ids = Vec::new();
-
-        for predicate in filter.predicates() {
-            let column_ids = predicate.predicate_column_ids();
-            for col_id in column_ids {
-                if let Some(column) = self.cached_row_group.get_column(col_id as u64) {
-                    for batch_idx in 0..(total_batches as u16 + 10) {
-                        // Check a generous range of batch IDs
-                        let batch_id = BatchID::from_raw(batch_idx);
-                        let entry_id = column.entry_id(batch_id).into();
-                        if cache_store.is_on_disk(&entry_id) {
-                            entry_ids.push(entry_id);
-                        }
-                    }
-                }
-            }
-        }
-
-        if !entry_ids.is_empty() {
-            cache_store.prefetch_disk_entries(&entry_ids).await;
-        }
-    }
-
     async fn evaluate_predicate_after_materialize(
         &mut self,
         selection: &BooleanBuffer,
@@ -543,47 +501,6 @@ impl LiquidCacheReaderInner {
             })?;
 
         Ok(Arc::clone(record_batch.column(position)))
-    }
-}
-
-/// Prefetch all disk-resident predicate column entries for a row group.
-/// Issues concurrent IO for all batches, allowing io_uring to batch the reads.
-async fn prefetch_predicate_columns(
-    cached_row_group: &crate::cache::CachedRowGroupRef,
-    row_filter: &Option<LiquidRowFilter>,
-) {
-    let Some(filter) = row_filter.as_ref() else {
-        return;
-    };
-
-    let cache_store = cached_row_group.cache_store();
-
-    // Collect all entry IDs for predicate columns that are on disk
-    let mut entry_ids = Vec::new();
-    let batch_size = cache_store.config().batch_size();
-    // Estimate max batches conservatively
-    let max_batches: u16 = 500;
-
-    for predicate in filter.predicates() {
-        let column_ids = predicate.predicate_column_ids();
-        for col_id in column_ids {
-            if let Some(column) = cached_row_group.get_column(col_id as u64) {
-                for batch_idx in 0..max_batches {
-                    let batch_id = BatchID::from_raw(batch_idx);
-                    let entry_id = column.entry_id(batch_id).into();
-                    if cache_store.is_on_disk(&entry_id) {
-                        entry_ids.push(entry_id);
-                    } else if !cache_store.is_cached(&entry_id) {
-                        // Entry doesn't exist at all, stop scanning
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    if !entry_ids.is_empty() {
-        cache_store.prefetch_disk_entries(&entry_ids).await;
     }
 }
 
