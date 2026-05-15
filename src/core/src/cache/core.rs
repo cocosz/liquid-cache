@@ -504,162 +504,97 @@ impl LiquidCache {
     }
 
     #[fastrace::trace]
+    #[fastrace::trace]
     async fn squeeze_victims(&self, victims: Vec<EntryID>) -> Result<(), CacheFull> {
         self.trace(InternalEvent::SqueezeBegin {
             victims: victims.clone(),
         });
 
-        // Group victims by DiskGroupID for potential coalesced disk writes.
-        let mut groups: std::collections::HashMap<DiskGroupID, Vec<EntryID>> =
-            std::collections::HashMap::new();
-        for &victim in &victims {
-            let group = DiskGroupID::from_entry_id(victim);
-            groups.entry(group).or_default().push(victim);
+        // Squeeze each victim individually (preserves original ordering behavior).
+        for victim in &victims {
+            self.squeeze_victim_inner(*victim).await?;
         }
 
-        // For groups with multiple entries, attempt coalesced squeeze.
-        // For singletons, use the standard per-batch path.
-        for (disk_group, group_victims) in groups {
-            if group_victims.len() > 1 {
-                self.squeeze_victims_coalesced(disk_group, group_victims)
-                    .await?;
-            } else {
-                self.squeeze_victim_inner(group_victims[0]).await?;
-            }
-        }
+        // Post-pass: coalesce per-batch disk entries that share a DiskGroupID.
+        // This re-reads their bytes from disk, writes a single coalesced entry,
+        // and updates the index. Only groups with 2+ disk entries are coalesced.
+        self.coalesce_disk_entries(&victims).await?;
+
         Ok(())
     }
 
-    /// Squeeze a group of victims that share the same column (DiskGroupID).
-    /// Squeezes each to its final in-memory form, then writes all as one coalesced disk entry.
-    async fn squeeze_victims_coalesced(
-        &self,
-        disk_group: DiskGroupID,
-        victims: Vec<EntryID>,
-    ) -> Result<(), CacheFull> {
-        // Phase 1: Squeeze each victim until it reaches a disk-bound state.
-        // Collect (entry_id, bytes) for the final coalesced write.
-        let mut coalesced_entries: Vec<(EntryID, Bytes)> = Vec::with_capacity(victims.len());
-
-        for victim in &victims {
-            let Some(batch) = self.index.get(victim) else {
+    /// After individual squeezes, find groups of DiskLiquid entries sharing a
+    /// DiskGroupID and rewrite them as a single coalesced disk entry.
+    async fn coalesce_disk_entries(&self, entry_ids: &[EntryID]) -> Result<(), CacheFull> {
+        // Group by DiskGroupID, collecting only entries that ended up as DiskLiquid.
+        let mut groups: std::collections::HashMap<DiskGroupID, Vec<EntryID>> =
+            std::collections::HashMap::new();
+        for &entry_id in entry_ids {
+            let Some(batch) = self.index.get(&entry_id) else {
                 continue;
             };
-            self.trace(InternalEvent::SqueezeVictim { entry: *victim });
+            if matches!(batch.as_ref(), CacheEntry::DiskLiquid { .. }) {
+                let group = DiskGroupID::from_entry_id(entry_id);
+                groups.entry(group).or_default().push(entry_id);
+            }
+        }
 
-            let compressor = self.metadata.get_compressor(victim);
-            let squeeze_hint_arc = self.metadata.squeeze_hint(victim);
-            let squeeze_hint = squeeze_hint_arc.as_deref();
-            let squeeze_io: Arc<dyn SqueezeIoHandler> = Arc::new(DefaultSqueezeIo::new(
-                self.store.clone(),
-                *victim,
-                self.observer.clone(),
-            ));
+        for (disk_group, mut group_entries) in groups {
+            if group_entries.len() < 2 {
+                continue;
+            }
 
-            let mut current_batch = batch;
-            let mut final_bytes: Option<Bytes> = None;
+            // Sort for deterministic batch ordering.
+            group_entries.sort();
 
-            loop {
-                let outcome = self.squeeze_policy.squeeze(
-                    current_batch.as_ref(),
-                    compressor.as_ref(),
-                    squeeze_hint,
-                    &squeeze_io,
-                );
-
-                match outcome {
-                    SqueezeOutcome::Replace {
-                        entry: new_batch,
-                        bytes_to_write,
-                    } => {
-                        let is_disk_entry = matches!(
-                            &new_batch,
-                            CacheEntry::DiskLiquid { .. } | CacheEntry::DiskArrow { .. }
-                        );
-
-                        if let Some(bytes) = bytes_to_write {
-                            if is_disk_entry {
-                                // Final disk-bound bytes — collect for coalescing.
-                                final_bytes = Some(bytes);
-                                let _ = self.try_insert(*victim, new_batch);
-                                break;
-                            } else {
-                                // Intermediate bytes (e.g. squeeze backing data).
-                                // Write per-entry and continue squeezing.
-                                self.write_batch_to_disk(*victim, &new_batch, bytes)
-                                    .await?;
-                                match self.try_insert(*victim, new_batch) {
-                                    Ok(()) => {
-                                        current_batch = self.index.get(victim).unwrap();
-                                    }
-                                    Err(batch) => {
-                                        current_batch = Arc::new(batch);
-                                    }
-                                }
-                            }
-                        } else if is_disk_entry {
-                            // Already a disk entry with no new bytes (e.g. MemorySqueezedLiquid
-                            // whose backing is already on disk). Just update the index.
-                            let _ = self.try_insert(*victim, new_batch);
-                            break;
-                        } else {
-                            // Intermediate squeeze step (e.g. Arrow→Liquid). Continue.
-                            match self.try_insert(*victim, new_batch) {
-                                Ok(()) => {
-                                    current_batch = self.index.get(victim).unwrap();
-                                }
-                                Err(batch) => {
-                                    current_batch = Arc::new(batch);
-                                }
-                            }
-                        }
-                    }
-                    SqueezeOutcome::Remove => {
-                        self.remove_disk_entry(*victim).await;
-                        break;
+            // Read each entry's bytes from disk.
+            let mut batch_bytes: Vec<Bytes> = Vec::with_capacity(group_entries.len());
+            let mut data_types: Vec<arrow_schema::DataType> =
+                Vec::with_capacity(group_entries.len());
+            for entry_id in &group_entries {
+                let raw = self
+                    .store
+                    .get(&entry_id_to_key(entry_id))
+                    .await
+                    .expect("read failed");
+                batch_bytes.push(Bytes::from(raw));
+                if let Some(entry) = self.index.get(entry_id) {
+                    if let CacheEntry::DiskLiquid { data_type, .. } = entry.as_ref() {
+                        data_types.push(data_type.clone());
                     }
                 }
             }
 
-            if let Some(bytes) = final_bytes {
-                coalesced_entries.push((*victim, bytes));
+            let total_batches = batch_bytes.len() as u16;
+
+            // Write coalesced entry (this reserves additional disk budget).
+            let group_disk_bytes = self
+                .write_column_to_disk(disk_group, &batch_bytes)
+                .await?;
+
+            // Update each entry to DiskCoalesced and release the old per-batch disk budget.
+            for (batch_index, entry_id) in group_entries.iter().enumerate() {
+                let old_bytes = batch_bytes[batch_index].len();
+                let dt = data_types
+                    .get(batch_index)
+                    .cloned()
+                    .unwrap_or(arrow_schema::DataType::Null);
+
+                let coalesced_entry = CacheEntry::disk_coalesced(
+                    dt,
+                    disk_group,
+                    batch_index as u16,
+                    total_batches,
+                    group_disk_bytes,
+                );
+                let _ = self.try_insert(*entry_id, coalesced_entry);
+
+                // Release the old per-batch disk reservation.
+                self.budget.release_disk(old_bytes);
+
+                // Remove the old per-batch key from disk store.
+                let _ = self.store.remove(entry_id_to_key(entry_id)).await;
             }
-        }
-
-        if coalesced_entries.is_empty() {
-            return Ok(());
-        }
-
-        // Sort by entry_id to ensure consistent batch ordering within the group
-        coalesced_entries.sort_by_key(|(entry_id, _)| *entry_id);
-
-        let batch_bytes: Vec<Bytes> = coalesced_entries.iter().map(|(_, b)| b.clone()).collect();
-        let total_batches = batch_bytes.len() as u16;
-
-        // Phase 2: Write coalesced
-        let group_disk_bytes = self
-            .write_column_to_disk(disk_group, &batch_bytes)
-            .await?;
-
-        // Phase 3: Update each entry to DiskCoalesced
-        for (batch_index, (entry_id, _)) in coalesced_entries.iter().enumerate() {
-            let current = self.index.get(entry_id);
-            let data_type = match current.as_deref() {
-                Some(CacheEntry::DiskLiquid { data_type, .. }) => data_type.clone(),
-                Some(CacheEntry::DiskArrow { data_type, .. }) => data_type.clone(),
-                Some(CacheEntry::MemoryLiquid(arr)) => arr.original_arrow_data_type(),
-                Some(CacheEntry::MemorySqueezedLiquid(arr)) => arr.original_arrow_data_type(),
-                _ => arrow_schema::DataType::Null,
-            };
-
-            let coalesced_entry = CacheEntry::disk_coalesced(
-                data_type,
-                disk_group,
-                batch_index as u16,
-                total_batches,
-                group_disk_bytes,
-            );
-            let _ = self.try_insert(*entry_id, coalesced_entry);
         }
 
         Ok(())
