@@ -540,7 +540,6 @@ impl LiquidCache {
         // Phase 1: Squeeze each victim to produce liquid bytes.
         // Collect (entry_id, batch_index, bytes) for the coalesced write.
         let mut coalesced_entries: Vec<(EntryID, Bytes)> = Vec::with_capacity(victims.len());
-        let mut non_liquid_victims: Vec<EntryID> = Vec::new();
 
         for victim in &victims {
             let Some(batch) = self.index.get(victim) else {

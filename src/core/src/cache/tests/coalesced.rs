@@ -58,7 +58,6 @@ async fn squeeze_coalesces_same_column_entries() {
 
     // After squeeze, the evicted entries should be DiskCoalesced.
     let mut coalesced_count = 0;
-    let mut memory_count = 0;
     for batch in 0..4u16 {
         let entry_id = make_entry_id(batch);
         if let Some(entry) = cache.index().get(&entry_id) {
@@ -77,9 +76,7 @@ async fn squeeze_coalesces_same_column_entries() {
                 }
                 CacheEntry::MemoryArrow(_)
                 | CacheEntry::MemoryLiquid(_)
-                | CacheEntry::MemorySqueezedLiquid(_) => {
-                    memory_count += 1;
-                }
+                | CacheEntry::MemorySqueezedLiquid(_) => {}
                 _ => {}
             }
         }

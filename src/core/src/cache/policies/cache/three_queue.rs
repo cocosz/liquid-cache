@@ -159,7 +159,7 @@ impl CachePolicy for LiquidPolicy {
             CachedBatchType::MemoryArrow => QueueKind::Arrow,
             CachedBatchType::MemoryLiquid => QueueKind::Liquid,
             CachedBatchType::MemorySqueezedLiquid => QueueKind::Squeezed,
-            CachedBatchType::DiskLiquid | CachedBatchType::DiskArrow => QueueKind::Disk,
+            CachedBatchType::DiskLiquid | CachedBatchType::DiskArrow | CachedBatchType::DiskCoalesced => QueueKind::Disk,
         };
 
         inner.upsert_into_queue(*entry_id, target);
