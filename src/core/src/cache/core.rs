@@ -593,7 +593,8 @@ impl LiquidCache {
                 self.budget.release_disk(old_bytes);
 
                 // Remove the old per-batch key from disk store.
-                let _ = self.store.remove(entry_id_to_key(entry_id)).await;
+                let old_key = entry_id_to_key(entry_id);
+                let _ = self.store.remove(&old_key).await;
             }
         }
 
