@@ -282,6 +282,14 @@ impl LiquidCache {
                 }
             }
         }
+
+        // Coalesce DiskLiquid entries that share a DiskGroupID.
+        let mut all_entry_ids = Vec::new();
+        self.for_each_entry(|entry_id, _| {
+            all_entry_ids.push(*entry_id);
+        });
+        self.coalesce_disk_entries(&all_entry_ids).await?;
+
         Ok(())
     }
 }
@@ -510,15 +518,9 @@ impl LiquidCache {
             victims: victims.clone(),
         });
 
-        // Squeeze each victim individually (preserves original ordering behavior).
         for victim in &victims {
             self.squeeze_victim_inner(*victim).await?;
         }
-
-        // Post-pass: coalesce per-batch disk entries that share a DiskGroupID.
-        // This re-reads their bytes from disk, writes a single coalesced entry,
-        // and updates the index. Only groups with 2+ disk entries are coalesced.
-        self.coalesce_disk_entries(&victims).await?;
 
         Ok(())
     }
@@ -529,18 +531,29 @@ impl LiquidCache {
         // Group by DiskGroupID, collecting only entries that ended up as DiskLiquid.
         let mut groups: std::collections::HashMap<DiskGroupID, Vec<EntryID>> =
             std::collections::HashMap::new();
+        // Track groups that already have coalesced entries (from a previous squeeze round).
+        let mut skip_groups: std::collections::HashSet<DiskGroupID> =
+            std::collections::HashSet::new();
+
         for &entry_id in entry_ids {
             let Some(batch) = self.index.get(&entry_id) else {
                 continue;
             };
-            if matches!(batch.as_ref(), CacheEntry::DiskLiquid { .. }) {
-                let group = DiskGroupID::from_entry_id(entry_id);
-                groups.entry(group).or_default().push(entry_id);
+            let group = DiskGroupID::from_entry_id(entry_id);
+            match batch.as_ref() {
+                CacheEntry::DiskLiquid { .. } => {
+                    groups.entry(group).or_default().push(entry_id);
+                }
+                CacheEntry::DiskCoalesced { .. } => {
+                    // This group was already coalesced in a prior round; don't re-coalesce.
+                    skip_groups.insert(group);
+                }
+                _ => {}
             }
         }
 
         for (disk_group, mut group_entries) in groups {
-            if group_entries.len() < 2 {
+            if group_entries.len() < 2 || skip_groups.contains(&disk_group) {
                 continue;
             }
 
