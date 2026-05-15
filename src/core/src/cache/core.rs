@@ -282,14 +282,6 @@ impl LiquidCache {
                 }
             }
         }
-
-        // Coalesce DiskLiquid entries that share a DiskGroupID.
-        let mut all_entry_ids = Vec::new();
-        self.for_each_entry(|entry_id, _| {
-            all_entry_ids.push(*entry_id);
-        });
-        self.coalesce_disk_entries(&all_entry_ids).await?;
-
         Ok(())
     }
 }
@@ -512,7 +504,6 @@ impl LiquidCache {
     }
 
     #[fastrace::trace]
-    #[fastrace::trace]
     async fn squeeze_victims(&self, victims: Vec<EntryID>) -> Result<(), CacheFull> {
         self.trace(InternalEvent::SqueezeBegin {
             victims: victims.clone(),
@@ -523,6 +514,18 @@ impl LiquidCache {
         }
 
         Ok(())
+    }
+
+    /// Coalesce all per-batch DiskLiquid entries into column-level coalesced entries.
+    ///
+    /// Call this when the cache is settled (no concurrent inserts/reads) to consolidate
+    /// individual disk entries into coalesced blobs for reduced IO on subsequent reads.
+    pub async fn coalesce_all_disk_entries(&self) -> Result<(), CacheFull> {
+        let mut all_entry_ids = Vec::new();
+        self.for_each_entry(|entry_id, _| {
+            all_entry_ids.push(*entry_id);
+        });
+        self.coalesce_disk_entries(&all_entry_ids).await
     }
 
     /// After individual squeezes, find groups of DiskLiquid entries sharing a

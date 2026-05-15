@@ -616,6 +616,14 @@ impl InProcessBenchmarkRunner {
                     .await?;
 
                 query_result.add(iteration_result);
+
+                // After the first iteration (cold fill), coalesce disk entries
+                // so subsequent hot reads benefit from column-level IO.
+                if it == 0 {
+                    if let Some(cache) = &cache {
+                        let _ = cache.storage().coalesce_all_disk_entries().await;
+                    }
+                }
             }
 
             if self.reset_cache
