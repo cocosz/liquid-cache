@@ -219,6 +219,47 @@ impl SqueezePolicy for TranscodeEvict {
     }
 }
 
+/// Squeeze policy: Arrow → Liquid → Drop (never writes to disk).
+/// When memory is full, entries are transcoded to Liquid (smaller) first.
+/// If still over budget, entries are removed entirely — no disk spill.
+/// Evicted entries will be re-read from Parquet on next access.
+#[derive(Debug, Default, Clone)]
+pub struct TranscodeDropEvict;
+
+impl SqueezePolicy for TranscodeDropEvict {
+    fn squeeze(
+        &self,
+        entry: &CacheEntry,
+        compressor: &LiquidCompressorStates,
+        _squeeze_hint: Option<&CacheExpression>,
+        _squeeze_io: &Arc<dyn SqueezeIoHandler>,
+    ) -> SqueezeOutcome {
+        match entry {
+            CacheEntry::MemoryArrow(array) => {
+                // First step: transcode Arrow → Liquid (saves ~2-4× memory)
+                match transcode_liquid_inner_with_hint(array, compressor, None) {
+                    Ok(liquid_array) => SqueezeOutcome::Replace {
+                        entry: CacheEntry::memory_liquid(liquid_array),
+                        bytes_to_write: None,
+                    },
+                    Err(_) => {
+                        // Can't transcode → just remove
+                        SqueezeOutcome::Remove
+                    }
+                }
+            }
+            // Liquid is already compressed — if still over budget, just drop it
+            CacheEntry::MemoryLiquid(_) => SqueezeOutcome::Remove,
+            // Squeezed — drop it
+            CacheEntry::MemorySqueezedLiquid(_) => SqueezeOutcome::Remove,
+            // Should never have disk entries with this policy, but handle gracefully
+            CacheEntry::DiskLiquid { .. } | CacheEntry::DiskArrow { .. } => {
+                SqueezeOutcome::Remove
+            }
+        }
+    }
+}
+
 pub(crate) fn try_variant_squeeze(
     array: &ArrayRef,
     requests: &[VariantRequest],
