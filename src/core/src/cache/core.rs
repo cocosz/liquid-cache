@@ -537,8 +537,8 @@ impl LiquidCache {
         disk_group: DiskGroupID,
         victims: Vec<EntryID>,
     ) -> Result<(), CacheFull> {
-        // Phase 1: Squeeze each victim to produce liquid bytes.
-        // Collect (entry_id, batch_index, bytes) for the coalesced write.
+        // Phase 1: Squeeze each victim until it reaches a disk-bound state.
+        // Collect (entry_id, bytes) for the final coalesced write.
         let mut coalesced_entries: Vec<(EntryID, Bytes)> = Vec::with_capacity(victims.len());
 
         for victim in &victims {
@@ -556,7 +556,6 @@ impl LiquidCache {
                 self.observer.clone(),
             ));
 
-            // Squeeze until we get bytes_to_write or Remove
             let mut current_batch = batch;
             let mut final_bytes: Option<Bytes> = None;
 
@@ -573,21 +572,45 @@ impl LiquidCache {
                         entry: new_batch,
                         bytes_to_write,
                     } => {
+                        let is_disk_entry = matches!(
+                            &new_batch,
+                            CacheEntry::DiskLiquid { .. } | CacheEntry::DiskArrow { .. }
+                        );
+
                         if let Some(bytes) = bytes_to_write {
-                            // This is the disk-bound bytes. Don't write yet — collect for coalescing.
-                            final_bytes = Some(bytes);
-                            // Update index to a temporary in-memory entry
-                            // (will be replaced with DiskCoalesced after coalesced write)
+                            if is_disk_entry {
+                                // Final disk-bound bytes — collect for coalescing.
+                                final_bytes = Some(bytes);
+                                let _ = self.try_insert(*victim, new_batch);
+                                break;
+                            } else {
+                                // Intermediate bytes (e.g. squeeze backing data).
+                                // Write per-entry and continue squeezing.
+                                self.write_batch_to_disk(*victim, &new_batch, bytes)
+                                    .await?;
+                                match self.try_insert(*victim, new_batch) {
+                                    Ok(()) => {
+                                        current_batch = self.index.get(victim).unwrap();
+                                    }
+                                    Err(batch) => {
+                                        current_batch = Arc::new(batch);
+                                    }
+                                }
+                            }
+                        } else if is_disk_entry {
+                            // Already a disk entry with no new bytes (e.g. MemorySqueezedLiquid
+                            // whose backing is already on disk). Just update the index.
                             let _ = self.try_insert(*victim, new_batch);
                             break;
-                        }
-                        // Intermediate squeeze step (e.g. Arrow→Liquid). Update index and continue.
-                        match self.try_insert(*victim, new_batch) {
-                            Ok(()) => {
-                                current_batch = self.index.get(victim).unwrap();
-                            }
-                            Err(batch) => {
-                                current_batch = Arc::new(batch);
+                        } else {
+                            // Intermediate squeeze step (e.g. Arrow→Liquid). Continue.
+                            match self.try_insert(*victim, new_batch) {
+                                Ok(()) => {
+                                    current_batch = self.index.get(victim).unwrap();
+                                }
+                                Err(batch) => {
+                                    current_batch = Arc::new(batch);
+                                }
                             }
                         }
                     }
@@ -600,8 +623,6 @@ impl LiquidCache {
 
             if let Some(bytes) = final_bytes {
                 coalesced_entries.push((*victim, bytes));
-            } else {
-                // Entry was removed or doesn't produce disk bytes — handled above
             }
         }
 
@@ -628,10 +649,7 @@ impl LiquidCache {
                 Some(CacheEntry::DiskArrow { data_type, .. }) => data_type.clone(),
                 Some(CacheEntry::MemoryLiquid(arr)) => arr.original_arrow_data_type(),
                 Some(CacheEntry::MemorySqueezedLiquid(arr)) => arr.original_arrow_data_type(),
-                _ => {
-                    // Fallback: use Arrow's null type as placeholder (shouldn't happen in practice)
-                    arrow_schema::DataType::Null
-                }
+                _ => arrow_schema::DataType::Null,
             };
 
             let coalesced_entry = CacheEntry::disk_coalesced(
