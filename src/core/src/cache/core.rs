@@ -190,6 +190,71 @@ impl LiquidCache {
         self.index.is_cached(entry_id)
     }
 
+    /// Check if a batch is on disk (DiskLiquid or DiskArrow).
+    pub fn is_on_disk(&self, entry_id: &EntryID) -> bool {
+        let Some(batch) = self.index.get(entry_id) else {
+            return false;
+        };
+        matches!(
+            batch.as_ref(),
+            CacheEntry::DiskLiquid { .. } | CacheEntry::DiskArrow { .. }
+        )
+    }
+
+    /// Prefetch multiple disk entries concurrently.
+    /// Reads all specified entries that are on disk in parallel, reducing
+    /// per-entry IO overhead by allowing io_uring to batch submissions.
+    /// Entries are read and hydrated back to memory if the hydration policy allows.
+    pub async fn prefetch_disk_entries(&self, entry_ids: &[EntryID]) {
+        use futures::stream::{FuturesUnordered, StreamExt};
+
+        let futures: FuturesUnordered<_> = entry_ids
+            .iter()
+            .filter_map(|entry_id| {
+                let batch = self.index.get(entry_id)?;
+                match batch.as_ref() {
+                    CacheEntry::DiskLiquid { .. } | CacheEntry::DiskArrow { .. } => {
+                        Some(self.prefetch_single_entry(*entry_id, batch))
+                    }
+                    _ => None, // already in memory, skip
+                }
+            })
+            .collect();
+
+        // Drive all futures concurrently
+        futures.count().await;
+    }
+
+    async fn prefetch_single_entry(
+        &self,
+        entry_id: EntryID,
+        batch: Arc<CacheEntry>,
+    ) {
+        match batch.as_ref() {
+            entry @ CacheEntry::DiskLiquid { .. } => {
+                let liquid = self.read_disk_liquid_array(&entry_id).await;
+                self.maybe_hydrate(
+                    &entry_id,
+                    entry,
+                    MaterializedEntry::Liquid(&liquid),
+                    None,
+                )
+                .await;
+            }
+            entry @ CacheEntry::DiskArrow { .. } => {
+                let array = self.read_disk_arrow_array(&entry_id).await;
+                self.maybe_hydrate(
+                    &entry_id,
+                    entry,
+                    MaterializedEntry::Arrow(&array),
+                    None,
+                )
+                .await;
+            }
+            _ => {}
+        }
+    }
+
     /// Get the config of the cache.
     pub fn config(&self) -> &CacheConfig {
         &self.config
