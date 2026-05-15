@@ -45,6 +45,10 @@ pub enum CacheEntry {
         total_batches: u16,
         /// Total byte size of the entire coalesced group on disk.
         group_disk_bytes: usize,
+        /// Byte offset of this batch's data within the coalesced blob (after header).
+        data_offset: u32,
+        /// Byte length of this batch's data.
+        data_len: u32,
     },
 }
 
@@ -87,6 +91,8 @@ impl CacheEntry {
         batch_index: u16,
         total_batches: u16,
         group_disk_bytes: usize,
+        data_offset: u32,
+        data_len: u32,
     ) -> Self {
         Self::DiskCoalesced {
             data_type,
@@ -94,6 +100,8 @@ impl CacheEntry {
             batch_index,
             total_batches,
             group_disk_bytes,
+            data_offset,
+            data_len,
         }
     }
 

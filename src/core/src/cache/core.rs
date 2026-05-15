@@ -580,11 +580,21 @@ impl LiquidCache {
             }
 
             let total_batches = batch_bytes.len() as u16;
+            let header_size = 4 + 4 * batch_bytes.len();
 
             // Write coalesced entry (this reserves additional disk budget).
             let group_disk_bytes = self
                 .write_column_to_disk(disk_group, &batch_bytes)
                 .await?;
+
+            // Compute per-batch data offsets (relative to start of file, including header).
+            let mut data_offset = header_size as u32;
+            let mut offsets_and_lens: Vec<(u32, u32)> = Vec::with_capacity(batch_bytes.len());
+            for b in &batch_bytes {
+                let len = b.len() as u32;
+                offsets_and_lens.push((data_offset, len));
+                data_offset += len;
+            }
 
             // Update each entry to DiskCoalesced and release the old per-batch disk budget.
             for (batch_index, entry_id) in group_entries.iter().enumerate() {
@@ -593,6 +603,7 @@ impl LiquidCache {
                     .get(batch_index)
                     .cloned()
                     .unwrap_or(arrow_schema::DataType::Null);
+                let (offset, len) = offsets_and_lens[batch_index];
 
                 let coalesced_entry = CacheEntry::disk_coalesced(
                     dt,
@@ -600,6 +611,8 @@ impl LiquidCache {
                     batch_index as u16,
                     total_batches,
                     group_disk_bytes,
+                    offset,
+                    len,
                 );
                 let _ = self.try_insert(*entry_id, coalesced_entry);
 
@@ -982,11 +995,19 @@ impl LiquidCache {
         if let Some(ref entry) = batch {
             if let CacheEntry::DiskCoalesced {
                 disk_group,
-                batch_index,
+                data_offset,
+                data_len,
                 ..
             } = entry.as_ref()
             {
-                return self.read_coalesced_batch(disk_group, *batch_index).await;
+                // Single range read — only fetches this batch's bytes.
+                let key = disk_group_to_key(disk_group);
+                let raw = self
+                    .store
+                    .get_range(&key, *data_offset as u64, *data_len as u64)
+                    .await
+                    .expect("coalesced range read failed");
+                return Bytes::from(raw);
             }
         }
         // Default: per-batch key lookup
