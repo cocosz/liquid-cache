@@ -131,6 +131,7 @@ impl LiquidCacheParquet {
                 CacheEntry::MemorySqueezedLiquid(array) => Some(array.len() as u64),
                 CacheEntry::DiskLiquid { .. } => None,
                 CacheEntry::DiskArrow { .. } => None, // We'd need to read it to get the count
+                CacheEntry::DiskCoalesced { .. } => None,
             };
             let cache_type = match cached_batch {
                 CacheEntry::MemoryArrow(_) => "InMemory",
@@ -138,6 +139,7 @@ impl LiquidCacheParquet {
                 CacheEntry::MemorySqueezedLiquid(_) => "LiquidSqueezed",
                 CacheEntry::DiskLiquid { .. } => "OnDiskLiquid",
                 CacheEntry::DiskArrow { .. } => "OnDiskArrow",
+                CacheEntry::DiskCoalesced { .. } => "OnDiskCoalesced",
             };
             let reference_count = cached_batch.reference_count();
             let entry_id = ParquetArrayID::from(*entry_id);

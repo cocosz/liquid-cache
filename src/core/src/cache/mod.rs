@@ -29,7 +29,7 @@ pub use policies::{
     NoHydration, SqueezePolicy, TranscodeSqueezeEvict,
 };
 pub use transcode::{transcode_liquid_inner, transcode_liquid_inner_with_hint};
-pub use utils::{EntryID, LiquidCompressorStates};
+pub use utils::{DiskGroupID, EntryID, LiquidCompressorStates};
 
 /// The cache could not reserve enough disk budget for a write.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

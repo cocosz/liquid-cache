@@ -5,6 +5,7 @@ use std::{fmt::Display, sync::Arc};
 use arrow::array::ArrayRef;
 use arrow_schema::DataType;
 
+use crate::cache::utils::DiskGroupID;
 use crate::liquid_array::{LiquidArrayRef, LiquidSqueezedArrayRef};
 
 /// A cached entry storing data in various formats.
@@ -29,6 +30,21 @@ pub enum CacheEntry {
         data_type: DataType,
         /// Byte length of the persisted backing data.
         disk_bytes: usize,
+    },
+    /// Cached batch on disk as part of a coalesced column group.
+    /// All batches sharing the same (file, row_group, column) are stored
+    /// as a single contiguous disk entry, reducing random IO to one read per column.
+    DiskCoalesced {
+        /// Original Arrow data type.
+        data_type: DataType,
+        /// Which disk group this batch belongs to.
+        disk_group: DiskGroupID,
+        /// Index of this batch within the coalesced blob.
+        batch_index: u16,
+        /// Total number of batches in this coalesced group.
+        total_batches: u16,
+        /// Total byte size of the entire coalesced group on disk.
+        group_disk_bytes: usize,
     },
 }
 
@@ -64,13 +80,30 @@ impl CacheEntry {
         }
     }
 
+    /// Construct a cached batch stored on disk as part of a coalesced column group.
+    pub fn disk_coalesced(
+        data_type: DataType,
+        disk_group: DiskGroupID,
+        batch_index: u16,
+        total_batches: u16,
+        group_disk_bytes: usize,
+    ) -> Self {
+        Self::DiskCoalesced {
+            data_type,
+            disk_group,
+            batch_index,
+            total_batches,
+            group_disk_bytes,
+        }
+    }
+
     /// Memory usage reported by the underlying representation.
     pub fn memory_usage_bytes(&self) -> usize {
         match self {
             Self::MemoryArrow(array) => array.get_array_memory_size(),
             Self::MemoryLiquid(array) => array.get_array_memory_size(),
             Self::MemorySqueezedLiquid(array) => array.get_array_memory_size(),
-            Self::DiskLiquid { .. } | Self::DiskArrow { .. } => 0,
+            Self::DiskLiquid { .. } | Self::DiskArrow { .. } | Self::DiskCoalesced { .. } => 0,
         }
     }
 
@@ -80,7 +113,7 @@ impl CacheEntry {
             Self::MemoryArrow(array) => Arc::strong_count(array),
             Self::MemoryLiquid(array) => Arc::strong_count(array),
             Self::MemorySqueezedLiquid(array) => Arc::strong_count(array),
-            Self::DiskLiquid { .. } | Self::DiskArrow { .. } => 0,
+            Self::DiskLiquid { .. } | Self::DiskArrow { .. } | Self::DiskCoalesced { .. } => 0,
         }
     }
 }
@@ -93,6 +126,7 @@ impl Display for CacheEntry {
             Self::MemorySqueezedLiquid(_) => write!(f, "MemorySqueezedLiquid"),
             Self::DiskLiquid { .. } => write!(f, "DiskLiquid"),
             Self::DiskArrow { .. } => write!(f, "DiskArrow"),
+            Self::DiskCoalesced { .. } => write!(f, "DiskCoalesced"),
         }
     }
 }
@@ -110,6 +144,8 @@ pub enum CachedBatchType {
     DiskLiquid,
     /// Cached batch on disk as Arrow array.
     DiskArrow,
+    /// Cached batch on disk as part of a coalesced column group.
+    DiskCoalesced,
 }
 
 impl From<&CacheEntry> for CachedBatchType {
@@ -120,6 +156,7 @@ impl From<&CacheEntry> for CachedBatchType {
             CacheEntry::MemorySqueezedLiquid(_) => Self::MemorySqueezedLiquid,
             CacheEntry::DiskLiquid { .. } => Self::DiskLiquid,
             CacheEntry::DiskArrow { .. } => Self::DiskArrow,
+            CacheEntry::DiskCoalesced { .. } => Self::DiskCoalesced,
         }
     }
 }

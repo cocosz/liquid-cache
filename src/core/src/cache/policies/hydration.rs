@@ -137,6 +137,9 @@ impl HydrationPolicy for AlwaysHydrate {
             (CacheEntry::MemorySqueezedLiquid(_), MaterializedEntry::Liquid(liq)) => {
                 Some(CacheEntry::memory_liquid((*liq).clone()))
             }
+            (CacheEntry::DiskCoalesced { .. }, MaterializedEntry::Liquid(liq)) => {
+                Some(CacheEntry::memory_liquid((*liq).clone()))
+            }
             _ => None,
         }
     }

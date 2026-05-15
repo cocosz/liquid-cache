@@ -86,6 +86,66 @@ impl From<EntryID> for usize {
     }
 }
 
+/// Groups all batches of a column in a row group for coalesced disk IO.
+///
+/// When entries spill to disk, instead of writing each batch individually,
+/// all batches sharing the same (file, row_group, column) are written as a
+/// single contiguous entry. This reduces random IO from O(batches) to O(columns).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct DiskGroupID {
+    /// Encoded as: file_id(16) | rg_id(16) | col_id(16) — same top-48-bit layout as EntryID.
+    val: u64,
+}
+
+impl DiskGroupID {
+    /// Create a new DiskGroupID from component IDs.
+    pub fn new(file_id: u16, row_group_id: u16, column_id: u16) -> Self {
+        let val = (file_id as u64) << 32 | (row_group_id as u64) << 16 | (column_id as u64);
+        Self { val }
+    }
+
+    /// Extract this group from an EntryID by stripping the batch_id (lowest 16 bits).
+    pub fn from_entry_id(entry_id: EntryID) -> Self {
+        let v: usize = entry_id.into();
+        let file_id = (v >> 48) as u16;
+        let rg_id = ((v >> 32) & 0xFFFF) as u16;
+        let col_id = ((v >> 16) & 0xFFFF) as u16;
+        Self::new(file_id, rg_id, col_id)
+    }
+
+    /// Get the file id.
+    pub fn file_id(&self) -> u16 {
+        (self.val >> 32) as u16
+    }
+
+    /// Get the row group id.
+    pub fn row_group_id(&self) -> u16 {
+        ((self.val >> 16) & 0xFFFF) as u16
+    }
+
+    /// Get the column id.
+    pub fn column_id(&self) -> u16 {
+        (self.val & 0xFFFF) as u16
+    }
+
+    /// Convert to a u64 suitable for use as a disk store key.
+    pub fn to_disk_key(&self) -> u64 {
+        self.val
+    }
+}
+
+impl From<u64> for DiskGroupID {
+    fn from(val: u64) -> Self {
+        Self { val }
+    }
+}
+
+impl From<DiskGroupID> for u64 {
+    fn from(val: DiskGroupID) -> Self {
+        val.val
+    }
+}
+
 /// States for liquid compressor.
 pub struct LiquidCompressorStates {
     fsst_compressor: RwLock<Option<Arc<fsst::Compressor>>>,

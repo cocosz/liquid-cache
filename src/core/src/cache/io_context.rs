@@ -8,7 +8,7 @@ use crate::{
     cache::{
         CacheExpression, Observer,
         observer::InternalEvent,
-        utils::{EntryID, LiquidCompressorStates},
+        utils::{DiskGroupID, EntryID, LiquidCompressorStates},
     },
     liquid_array::SqueezeIoHandler,
 };
@@ -41,6 +41,15 @@ pub trait EntryMetadata: Debug + Send + Sync {
 /// Convert an [`EntryID`] to a t4 key (8-byte little-endian representation).
 pub(crate) fn entry_id_to_key(entry_id: &EntryID) -> Vec<u8> {
     usize::from(*entry_id).to_le_bytes().to_vec()
+}
+
+/// Convert a [`DiskGroupID`] to a t4 key.
+/// Uses a distinct prefix byte (0x01) to avoid collision with per-batch keys (which are 8 bytes).
+pub(crate) fn disk_group_to_key(disk_group: &DiskGroupID) -> Vec<u8> {
+    let mut key = Vec::with_capacity(9);
+    key.push(0x01); // prefix to distinguish from entry_id keys
+    key.extend_from_slice(&disk_group.to_disk_key().to_le_bytes());
+    key
 }
 
 /// A default implementation of [`EntryMetadata`].

@@ -84,7 +84,9 @@ impl SqueezePolicy for Evict {
                     bytes_to_write: None,
                 }
             }
-            CacheEntry::DiskLiquid { .. } | CacheEntry::DiskArrow { .. } => SqueezeOutcome::Remove,
+            CacheEntry::DiskLiquid { .. }
+            | CacheEntry::DiskArrow { .. }
+            | CacheEntry::DiskCoalesced { .. } => SqueezeOutcome::Remove,
         }
     }
 }
@@ -159,7 +161,9 @@ impl SqueezePolicy for TranscodeSqueezeEvict {
                     bytes_to_write: None,
                 }
             }
-            CacheEntry::DiskLiquid { .. } | CacheEntry::DiskArrow { .. } => SqueezeOutcome::Remove,
+            CacheEntry::DiskLiquid { .. }
+            | CacheEntry::DiskArrow { .. }
+            | CacheEntry::DiskCoalesced { .. } => SqueezeOutcome::Remove,
         }
     }
 }
@@ -214,7 +218,9 @@ impl SqueezePolicy for TranscodeEvict {
                     bytes_to_write: None,
                 }
             }
-            CacheEntry::DiskLiquid { .. } | CacheEntry::DiskArrow { .. } => SqueezeOutcome::Remove,
+            CacheEntry::DiskLiquid { .. }
+            | CacheEntry::DiskArrow { .. }
+            | CacheEntry::DiskCoalesced { .. } => SqueezeOutcome::Remove,
         }
     }
 }
