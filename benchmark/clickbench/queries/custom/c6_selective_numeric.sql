@@ -1,0 +1,1 @@
+SELECT "UserID", "RegionID", "CounterID" FROM hits WHERE "CounterID" = 62 AND "EventDate"::INT::DATE = '2013-07-15' AND "DontCountHits" = 0 AND "IsRefresh" = 0 AND "TraficSourceID" IN (-1, 6) LIMIT 50;

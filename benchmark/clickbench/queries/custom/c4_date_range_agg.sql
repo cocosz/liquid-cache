@@ -1,0 +1,1 @@
+SELECT "EventDate"::INT::DATE, COUNT(*), SUM("IsRefresh"), AVG("ResolutionWidth") FROM hits WHERE "EventDate"::INT::DATE >= '2013-07-01' AND "EventDate"::INT::DATE <= '2013-07-15' AND "CounterID" > 0 GROUP BY "EventDate"::INT::DATE ORDER BY "EventDate"::INT::DATE;

@@ -1,0 +1,21 @@
+{
+	"name": "NumericCache-Light",
+	"description": "Lightweight queries: numeric filters/predicates, selective, small working set. These exercise the numeric cache path and should NOT trigger spill.",
+	"tables": {
+		"hits": "benchmark/clickbench/data/hits.parquet"
+	},
+	"queries": [
+		"benchmark/clickbench/queries/custom/c0_range_filter.sql",
+		"benchmark/clickbench/queries/custom/c1_multi_numeric_pred.sql",
+		"benchmark/clickbench/queries/custom/c2_point_lookups.sql",
+		"benchmark/clickbench/queries/custom/c3_numeric_group_filter.sql",
+		"benchmark/clickbench/queries/custom/c4_date_range_agg.sql",
+		"benchmark/clickbench/queries/custom/c6_selective_numeric.sql",
+		"benchmark/clickbench/queries/custom/c7_wide_numeric_scan.sql",
+		"benchmark/clickbench/queries/q1.sql",
+		"benchmark/clickbench/queries/q7.sql",
+		"benchmark/clickbench/queries/q40.sql",
+		"benchmark/clickbench/queries/q41.sql",
+		"benchmark/clickbench/queries/q42.sql"
+	]
+}

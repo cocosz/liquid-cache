@@ -1,0 +1,1 @@
+SELECT "CounterID", SUM("AdvEngineID"), AVG("ResolutionWidth"), MIN("ClientIP"), MAX("ClientIP"), COUNT(*) FROM hits WHERE "IsRefresh" = 0 GROUP BY "CounterID" HAVING COUNT(*) > 100 ORDER BY COUNT(*) DESC LIMIT 50;

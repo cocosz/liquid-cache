@@ -1,0 +1,1 @@
+SELECT AVG("ResolutionWidth"), AVG("ResolutionHeight"), AVG("ClientIP"), AVG("WindowClientWidth"), AVG("WindowClientHeight"), AVG("CounterID"), AVG("RegionID") FROM hits WHERE "AdvEngineID" = 0 AND "IsRefresh" = 0;
