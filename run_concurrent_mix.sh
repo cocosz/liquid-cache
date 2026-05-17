@@ -87,19 +87,15 @@ set -e
 # ============================================================
 #
 # idx 0  q4:   SELECT COUNT(DISTINCT "UserID") FROM hits;
-#              → ~17M distinct values, massive hash table
-# idx 1  q5:   SELECT COUNT(DISTINCT "SearchPhrase") FROM hits;
-#              → huge string hash table, guaranteed spill
-# idx 2  q15:  SELECT "UserID", COUNT(*) FROM hits GROUP BY "UserID" ORDER BY COUNT(*) DESC LIMIT 10;
-#              → GROUP BY on 17M unique UserIDs
-# idx 3  q8:   SELECT "RegionID", COUNT(DISTINCT "UserID") FROM hits GROUP BY "RegionID" ORDER BY u DESC LIMIT 10;
-#              → DISTINCT inside GROUP BY, high memory
-# idx 4  q32:  SELECT "WatchID", "ClientIP", COUNT(*), SUM("IsRefresh"), AVG("ResolutionWidth")
+#              → ~17M distinct Int64 values, massive hash table
+# idx 1  q15:  SELECT "UserID", COUNT(*) FROM hits GROUP BY "UserID" ORDER BY COUNT(*) DESC LIMIT 10;
+#              → GROUP BY on 17M unique Int64 UserIDs
+# idx 2  q8:   SELECT "RegionID", COUNT(DISTINCT "UserID") FROM hits GROUP BY "RegionID" ORDER BY u DESC LIMIT 10;
+#              → DISTINCT inside GROUP BY, high memory (all numeric)
+# idx 3  q32:  SELECT "WatchID", "ClientIP", COUNT(*), SUM("IsRefresh"), AVG("ResolutionWidth")
 #              FROM hits GROUP BY "WatchID", "ClientIP" ORDER BY c DESC LIMIT 10;
-#              → Cartesian GROUP BY on two high-cardinality cols
-# idx 5  q33:  SELECT "URL", COUNT(*) AS c FROM hits GROUP BY "URL" ORDER BY c DESC LIMIT 10;
-#              → GROUP BY on huge string column
-# idx 6  c5:   SELECT "CounterID", SUM("AdvEngineID"), AVG("ResolutionWidth"), MIN/MAX("ClientIP"), COUNT(*)
+#              → Cartesian GROUP BY on two high-cardinality numeric cols
+# idx 4  c5:   SELECT "CounterID", SUM("AdvEngineID"), AVG("ResolutionWidth"), MIN/MAX("ClientIP"), COUNT(*)
 #              FROM hits WHERE "IsRefresh" = 0 GROUP BY "CounterID" HAVING COUNT(*)>100
 #              → high-cardinality numeric GROUP BY
 
@@ -127,11 +123,9 @@ LIGHT_NAMES=(
 
 HEAVY_NAMES=(
     "q4_count_distinct_userid"
-    "q5_count_distinct_searchphrase"
     "q15_groupby_userid"
     "q8_distinct_in_groupby"
     "q32_cartesian_groupby"
-    "q33_groupby_url"
     "c5_heavy_numeric_agg"
 )
 
@@ -139,14 +133,14 @@ rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR/flamegraphs"
 
 echo "============================================================"
-echo "  Numeric Cache Concurrent Mix Benchmark"
-echo "  Memory configs: $MEMORY_CONFIGS MB"
-echo "  Iterations: $ITERATIONS (report uses min)"
+echo "  🧪 Numeric Cache Concurrent Mix Benchmark"
+echo "  💾 Memory configs: $MEMORY_CONFIGS MB"
+echo "  🔁 Iterations: $ITERATIONS (report uses min)"
 echo "============================================================"
 echo ""
 
 # Build once
-echo ">>> Building release binary..."
+echo "🔨 Building release binary..."
 cargo build --release --bin in_process 2>&1 | tail -3
 echo ""
 
@@ -154,7 +148,7 @@ NUM_LIGHT=${#LIGHT_NAMES[@]}
 NUM_HEAVY=${#HEAVY_NAMES[@]}
 
 # Print the SQL for each light query
-echo ">>> Light queries being tested:"
+echo "🪶 Light queries being tested:"
 for qi in $(seq 0 $((NUM_LIGHT - 1))); do
     SQL_FILE=$(python3 -c "import json; print(json.load(open('$LIGHT_MANIFEST'))['queries'][$qi])")
     echo "  [$qi] ${LIGHT_NAMES[$qi]}:"
@@ -162,7 +156,7 @@ for qi in $(seq 0 $((NUM_LIGHT - 1))); do
 done
 echo ""
 
-echo ">>> Heavy queries (contention generators):"
+echo "🏋️ Heavy queries (contention generators):"
 for hi in $(seq 0 $((NUM_HEAVY - 1))); do
     SQL_FILE=$(python3 -c "import json; print(json.load(open('$HEAVY_MANIFEST'))['queries'][$hi])")
     echo "  [$hi] ${HEAVY_NAMES[$hi]}:"
@@ -173,38 +167,29 @@ echo ""
 # ============================================================
 # Phase 1: DataFusion baseline (no liquid cache, no memory constraint)
 # ============================================================
-echo ">>> Phase 1: DataFusion baseline (no cache)..."
+echo "📊 Phase 1: DataFusion baseline (no cache)..."
 for qi in $(seq 0 $((NUM_LIGHT - 1))); do
-    echo -n "  [${qi}] ${LIGHT_NAMES[$qi]}..."
+    echo -n "  🔹 [${qi}] ${LIGHT_NAMES[$qi]}..."
     timeout 600 target/release/in_process \
         --manifest "$LIGHT_MANIFEST" \
         --bench-mode datafusion-default \
         --iteration $ITERATIONS \
         --query-index $qi \
         --explain-analyze \
-        --output "$OUTPUT_DIR/df_q${qi}.json" > "$OUTPUT_DIR/df_q${qi}.log" 2>&1 && echo " done" || echo " FAILED"
+        --output "$OUTPUT_DIR/df_q${qi}.json" > "$OUTPUT_DIR/df_q${qi}.log" 2>&1 && echo " ✅" || echo " ❌ FAILED"
 done
 echo ""
 
 # ============================================================
 # Phase 2: Per-query, per-memory-config baseline (cache-hot, no contention)
 # ============================================================
-echo ">>> Phase 2: Light queries across memory configs (no contention)..."
+echo "🚀 Phase 2: Light queries across memory configs (no contention)..."
 for MEM in $MEMORY_CONFIGS; do
-    echo "  ═══ ${MEM}MB ═══"
-
-    # Warm the cache first (run all queries once)
-    echo -n "    [warm] populating cache..."
-    timeout 600 target/release/in_process \
-        --manifest "$LIGHT_MANIFEST" \
-        --bench-mode liquid \
-        --max-memory-mb $MEM \
-        --iteration 1 \
-        --output "$OUTPUT_DIR/warmup_${MEM}mb.json" > "$OUTPUT_DIR/warmup_${MEM}mb.log" 2>&1 && echo " done" || echo " FAILED"
+    echo "  ═══ 💾 ${MEM}MB ═══"
 
     # Run each query individually for detailed per-query stats
     for qi in $(seq 0 $((NUM_LIGHT - 1))); do
-        echo -n "    [${qi}] ${LIGHT_NAMES[$qi]} (${ITERATIONS} iters)..."
+        echo -n "    🔹 [${qi}] ${LIGHT_NAMES[$qi]} (${ITERATIONS} iters)..."
         FLAMEGRAPH_DIR="$OUTPUT_DIR/flamegraphs/light_q${qi}_${MEM}mb"
         mkdir -p "$FLAMEGRAPH_DIR"
         timeout 600 target/release/in_process \
@@ -215,7 +200,7 @@ for MEM in $MEMORY_CONFIGS; do
             --query-index $qi \
             --explain-analyze \
             --flamegraph-dir "$FLAMEGRAPH_DIR" \
-            --output "$OUTPUT_DIR/baseline_q${qi}_${MEM}mb.json" > "$OUTPUT_DIR/baseline_q${qi}_${MEM}mb.log" 2>&1 && echo " done" || echo " FAILED/TIMEOUT"
+            --output "$OUTPUT_DIR/baseline_q${qi}_${MEM}mb.json" > "$OUTPUT_DIR/baseline_q${qi}_${MEM}mb.log" 2>&1 && echo " ✅" || echo " ❌ FAILED/TIMEOUT"
     done
     echo ""
 done
@@ -223,11 +208,11 @@ done
 # ============================================================
 # Phase 3: Heavy queries alone (establish spill timing)
 # ============================================================
-echo ">>> Phase 3: Heavy queries alone (spill baseline)..."
+echo "🏋️ Phase 3: Heavy queries alone (spill baseline)..."
 for MEM in $MEMORY_CONFIGS; do
-    echo "  ═══ ${MEM}MB ═══"
+    echo "  ═══ 💾 ${MEM}MB ═══"
     for idx in $(seq 0 $((NUM_HEAVY - 1))); do
-        echo -n "    [${idx}] ${HEAVY_NAMES[$idx]}..."
+        echo -n "    🔸 [${idx}] ${HEAVY_NAMES[$idx]}..."
         timeout 900 target/release/in_process \
             --manifest "$HEAVY_MANIFEST" \
             --bench-mode liquid \
@@ -235,7 +220,7 @@ for MEM in $MEMORY_CONFIGS; do
             --iteration 1 \
             --query-index $idx \
             --explain-analyze \
-            --output "$OUTPUT_DIR/heavy_alone_idx${idx}_${MEM}mb.json" > "$OUTPUT_DIR/heavy_alone_idx${idx}_${MEM}mb.log" 2>&1 && echo " done" || echo " FAILED/TIMEOUT"
+            --output "$OUTPUT_DIR/heavy_alone_idx${idx}_${MEM}mb.json" > "$OUTPUT_DIR/heavy_alone_idx${idx}_${MEM}mb.log" 2>&1 && echo " ✅" || echo " ❌ FAILED/TIMEOUT"
     done
     echo ""
 done
@@ -243,21 +228,12 @@ done
 # ============================================================
 # Phase 4: Concurrent — heavy background + light foreground per memory config
 # ============================================================
-echo ">>> Phase 4: Concurrent mix (heavy bg + light fg)..."
+echo "⚡ Phase 4: Concurrent mix (heavy bg + light fg)..."
 for MEM in $MEMORY_CONFIGS; do
-    echo "  ═══ ${MEM}MB ═══"
-
-    # Re-warm cache for this memory config
-    echo -n "    [warm] re-populating cache..."
-    timeout 600 target/release/in_process \
-        --manifest "$LIGHT_MANIFEST" \
-        --bench-mode liquid \
-        --max-memory-mb $MEM \
-        --iteration 1 \
-        --output "$OUTPUT_DIR/conc_warmup_${MEM}mb.json" > /dev/null 2>&1 && echo " done" || echo " FAILED"
+    echo "  ═══ 💾 ${MEM}MB ═══"
 
     for heavy_idx in $(seq 0 $((NUM_HEAVY - 1))); do
-        echo -n "    [bg: ${HEAVY_NAMES[$heavy_idx]}] + all light queries fg..."
+        echo -n "    🔸⚔️ [bg: ${HEAVY_NAMES[$heavy_idx]}] + all light fg..."
 
         # Launch heavy in background
         target/release/in_process \
@@ -280,7 +256,7 @@ for MEM in $MEMORY_CONFIGS; do
             --output "$OUTPUT_DIR/conc_light_during_heavy${heavy_idx}_${MEM}mb.json" > "$OUTPUT_DIR/conc_light_during_heavy${heavy_idx}_${MEM}mb.log" 2>&1 || true
 
         wait $HEAVY_PID 2>/dev/null || true
-        echo " done"
+        echo " ✅"
     done
     echo ""
 done
@@ -288,7 +264,7 @@ done
 # ============================================================
 # Phase 5: Generate detailed report (uses min of iterations)
 # ============================================================
-echo ">>> Generating detailed report..."
+echo "📝 Generating detailed report..."
 python3 - "$OUTPUT_DIR" "$ITERATIONS" "$LIGHT_MANIFEST" "$HEAVY_MANIFEST" "$MEMORY_CONFIGS" <<'PYEOF'
 import json, sys, os
 
@@ -340,21 +316,17 @@ light_purposes = [
 
 heavy_names = [
     "q4_count_distinct_userid",
-    "q5_count_distinct_searchphrase",
     "q15_groupby_userid",
     "q8_distinct_in_groupby",
     "q32_cartesian_groupby",
-    "q33_groupby_url",
     "c5_heavy_numeric_agg",
 ]
 
 heavy_purposes = [
-    "17M distinct values hash table",
-    "Huge string hash table, guaranteed spill",
-    "GROUP BY on 17M unique UserIDs",
-    "DISTINCT inside GROUP BY, high memory",
-    "Cartesian GROUP BY on two high-cardinality cols",
-    "GROUP BY on huge string column",
+    "17M distinct Int64 values hash table",
+    "GROUP BY on 17M unique Int64 UserIDs",
+    "DISTINCT inside GROUP BY, all numeric",
+    "Cartesian GROUP BY on two high-cardinality numeric cols",
     "High-cardinality numeric GROUP BY",
 ]
 
@@ -628,7 +600,7 @@ print("\n" + "=" * 110)
 PYEOF
 
 echo ""
-echo "=== Done! ==="
-echo "  Detailed report: $OUTPUT_DIR/detailed_report.md"
-echo "  Logs (explain-analyze + cache stats): $OUTPUT_DIR/*.log"
-echo "  Flamegraphs: $OUTPUT_DIR/flamegraphs/"
+echo "🎉 === Done! ==="
+echo "  📄 Detailed report: $OUTPUT_DIR/detailed_report.md"
+echo "  📋 Logs (explain-analyze + cache stats): $OUTPUT_DIR/*.log"
+echo "  🔥 Flamegraphs: $OUTPUT_DIR/flamegraphs/"

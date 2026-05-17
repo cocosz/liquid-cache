@@ -1,16 +1,14 @@
 {
 	"name": "NumericCache-Heavy",
-	"description": "Heavyweight queries: high-cardinality GROUP BY, DISTINCT on huge columns, string grouping. These will trigger spill and compete for CPU/memory. They do NOT benefit from numeric filter cache.",
+	"description": "Heavyweight queries: high-cardinality GROUP BY on numeric columns. These will trigger spill and compete for CPU/memory. All numeric-only.",
 	"tables": {
 		"hits": "benchmark/clickbench/data/hits.parquet"
 	},
 	"queries": [
 		"benchmark/clickbench/queries/q4.sql",
-		"benchmark/clickbench/queries/q5.sql",
 		"benchmark/clickbench/queries/q15.sql",
 		"benchmark/clickbench/queries/q8.sql",
 		"benchmark/clickbench/queries/q32.sql",
-		"benchmark/clickbench/queries/q33.sql",
 		"benchmark/clickbench/queries/custom/c5_heavy_numeric_agg.sql"
 	]
 }
