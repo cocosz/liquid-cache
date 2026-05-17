@@ -7,24 +7,9 @@ set -e
 # Light queries exercise the numeric cache path (filters, predicates, aggs on numeric cols).
 # Heavy queries cause memory pressure / spill and compete for CPU.
 # Expected: squeezed liquid cache keeps light queries fast despite contention.
-
-LIGHT_MANIFEST="benchmark/clickbench/manifest_light.json"
-HEAVY_MANIFEST="benchmark/clickbench/manifest_heavy.json"
-OUTPUT_DIR="outputs/concurrent_mix"
-CACHE_DIR="benchmark/data/cache"
-MAX_MEMORY_MB=${1:-4096}
-ITERATIONS=3
-
-mkdir -p "$OUTPUT_DIR"
-
-echo "=============================================="
-echo "Numeric Filter Cache — Concurrent Mix Benchmark"
-echo "Max memory: ${MAX_MEMORY_MB}MB"
-echo "=============================================="
-
+#
 # ============================================================
-# LIGHTWEIGHT QUERIES (manifest_light.json)
-# All use numeric filters/predicates — exercise the cache.
+# LIGHTWEIGHT QUERIES (manifest_light.json) — numeric filter cache beneficiaries
 # ============================================================
 #
 # idx 0  c0_range_filter:
@@ -86,140 +71,296 @@ echo "=============================================="
 #         WHERE "CounterID" = 62 AND "EventDate" between '2013-07-14' and '2013-07-15'
 #           AND "IsRefresh" = 0 AND "DontCountHits" = 0
 #         GROUP BY M ORDER BY M LIMIT 10 OFFSET 1000;
+#
+# ============================================================
+# HEAVYWEIGHT QUERIES (manifest_heavy.json) — spill-inducing, NOT cache beneficiaries
+# ============================================================
+#
+# idx 0  q4:   SELECT COUNT(DISTINCT "UserID") FROM hits;
+# idx 1  q5:   SELECT COUNT(DISTINCT "SearchPhrase") FROM hits;
+# idx 2  q15:  SELECT "UserID", COUNT(*) FROM hits GROUP BY "UserID" ORDER BY COUNT(*) DESC LIMIT 10;
+# idx 3  q8:   SELECT "RegionID", COUNT(DISTINCT "UserID") FROM hits GROUP BY "RegionID" ORDER BY u DESC LIMIT 10;
+# idx 4  q32:  SELECT "WatchID", "ClientIP", COUNT(*), SUM("IsRefresh"), AVG("ResolutionWidth") FROM hits GROUP BY "WatchID", "ClientIP" ORDER BY c DESC LIMIT 10;
+# idx 5  q33:  SELECT "URL", COUNT(*) AS c FROM hits GROUP BY "URL" ORDER BY c DESC LIMIT 10;
+# idx 6  c5:   SELECT "CounterID", SUM("AdvEngineID"), AVG("ResolutionWidth"), MIN/MAX("ClientIP"), COUNT(*) FROM hits WHERE "IsRefresh" = 0 GROUP BY "CounterID" HAVING COUNT(*)>100 ORDER BY COUNT(*) DESC LIMIT 50;
 
-# ============================================================
-# HEAVYWEIGHT QUERIES (manifest_heavy.json)
-# These trigger spill / compete for memory. NOT numeric cache beneficiaries.
-# ============================================================
-#
-# idx 0  q4:
-#         SELECT COUNT(DISTINCT "UserID") FROM hits;
-#         → ~17M distinct values, huge hash table
-#
-# idx 1  q5:
-#         SELECT COUNT(DISTINCT "SearchPhrase") FROM hits;
-#         → massive string hash table
-#
-# idx 2  q15:
-#         SELECT "UserID", COUNT(*) FROM hits GROUP BY "UserID" ORDER BY COUNT(*) DESC LIMIT 10;
-#         → GROUP BY on 17M unique UserIDs
-#
-# idx 3  q8:
-#         SELECT "RegionID", COUNT(DISTINCT "UserID") AS u FROM hits GROUP BY "RegionID" ORDER BY u DESC LIMIT 10;
-#         → DISTINCT inside GROUP BY, high memory
-#
-# idx 4  q32:
-#         SELECT "WatchID", "ClientIP", COUNT(*) AS c, SUM("IsRefresh"), AVG("ResolutionWidth")
-#         FROM hits GROUP BY "WatchID", "ClientIP" ORDER BY c DESC LIMIT 10;
-#         → Cartesian-ish GROUP BY on two high-cardinality cols
-#
-# idx 5  q33:
-#         SELECT "URL", COUNT(*) AS c FROM hits GROUP BY "URL" ORDER BY c DESC LIMIT 10;
-#         → GROUP BY on huge string column
-#
-# idx 6  c5_heavy_numeric_agg:
-#         SELECT "CounterID", SUM("AdvEngineID"), AVG("ResolutionWidth"), MIN("ClientIP"),
-#                MAX("ClientIP"), COUNT(*) FROM hits
-#         WHERE "IsRefresh" = 0 GROUP BY "CounterID" HAVING COUNT(*) > 100
-#         ORDER BY COUNT(*) DESC LIMIT 50;
-#         → Many numeric aggs but high-cardinality GROUP BY → large hash table
+LIGHT_MANIFEST="benchmark/clickbench/manifest_light.json"
+HEAVY_MANIFEST="benchmark/clickbench/manifest_heavy.json"
+MAX_MEMORY_MB=${1:-4096}
+ITERATIONS=5
+OUTPUT_DIR="outputs/concurrent_mix"
 
-# ============================================================
-# Phase 1: Warm cache with light queries
-# ============================================================
+rm -rf "$OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR/flamegraphs"
+
+echo "============================================================"
+echo "  Numeric Cache Concurrent Mix Benchmark"
+echo "  Max memory: ${MAX_MEMORY_MB}MB"
+echo "  Iterations: $ITERATIONS"
+echo "============================================================"
 echo ""
-echo "=== Phase 1: Warm numeric cache ==="
-cargo run --release --bin in_process -- \
-  --manifest "$LIGHT_MANIFEST" \
-  --bench-mode liquid \
-  --max-memory-mb "$MAX_MEMORY_MB" \
-  --iteration 1 \
-  --cache-dir "$CACHE_DIR" \
-  --explain-analyze \
-  --output "$OUTPUT_DIR/warmup.json" \
-  2>/dev/null
-echo "  Cache warmed."
 
-# ============================================================
-# Phase 2: Light queries alone — numeric cache hit baseline
-# ============================================================
+# Build once
+echo ">>> Building release binary..."
+cargo build --release --bin in_process 2>&1 | tail -3
 echo ""
-echo "=== Phase 2: Light queries (cache-hot, no contention) ==="
-cargo run --release --bin in_process -- \
-  --manifest "$LIGHT_MANIFEST" \
-  --bench-mode liquid \
-  --max-memory-mb "$MAX_MEMORY_MB" \
-  --iteration "$ITERATIONS" \
-  --cache-dir "$CACHE_DIR" \
-  --explain-analyze \
-  --output "$OUTPUT_DIR/baseline_light.json" \
-  2>/dev/null
-echo "  Done."
 
 # ============================================================
-# Phase 3: Concurrent — heavy in background, light in foreground
+# Phase 1: DataFusion baseline (no liquid cache)
 # ============================================================
+echo ">>> Phase 1: DataFusion baseline (no cache)..."
+echo -n "  Light queries..."
+timeout 600 target/release/in_process \
+    --manifest "$LIGHT_MANIFEST" \
+    --bench-mode datafusion-default \
+    --iteration $ITERATIONS \
+    --output "$OUTPUT_DIR/datafusion_baseline.json" > "$OUTPUT_DIR/datafusion_baseline.log" 2>&1 && echo " done" || echo " FAILED"
 echo ""
-echo "=== Phase 3: Concurrent (heavy background + light foreground) ==="
 
-NUM_HEAVY=$(python3 -c "import json; print(len(json.load(open('$HEAVY_MANIFEST'))['queries']))")
-
-for heavy_idx in $(seq 0 $((NUM_HEAVY - 1))); do
-  echo "  Starting heavy idx ${heavy_idx} in background..."
-  cargo run --release --bin in_process -- \
-    --manifest "$HEAVY_MANIFEST" \
-    --bench-mode liquid \
-    --max-memory-mb "$MAX_MEMORY_MB" \
-    --iteration 1 \
-    --query-index "$heavy_idx" \
-    --cache-dir "$CACHE_DIR" \
-    --output "$OUTPUT_DIR/concurrent_heavy_idx${heavy_idx}.json" \
-    2>/dev/null &
-  HEAVY_PID=$!
-
-  # Run all light queries while heavy is active
-  cargo run --release --bin in_process -- \
+# ============================================================
+# Phase 2: Warm cache then measure cache-hot baseline
+# ============================================================
+echo ">>> Phase 2: Warm cache + cache-hot baseline..."
+echo -n "  Warming..."
+timeout 600 target/release/in_process \
     --manifest "$LIGHT_MANIFEST" \
     --bench-mode liquid \
-    --max-memory-mb "$MAX_MEMORY_MB" \
+    --max-memory-mb $MAX_MEMORY_MB \
     --iteration 1 \
-    --cache-dir "$CACHE_DIR" \
     --explain-analyze \
-    --output "$OUTPUT_DIR/concurrent_light_during_heavy_idx${heavy_idx}.json" \
-    2>/dev/null
+    --output "$OUTPUT_DIR/warmup.json" > "$OUTPUT_DIR/warmup.log" 2>&1 && echo " done" || echo " FAILED"
 
-  wait $HEAVY_PID 2>/dev/null || true
-  echo "  Heavy idx ${heavy_idx} finished."
+echo -n "  Cache-hot baseline..."
+timeout 600 target/release/in_process \
+    --manifest "$LIGHT_MANIFEST" \
+    --bench-mode liquid \
+    --max-memory-mb $MAX_MEMORY_MB \
+    --iteration $ITERATIONS \
+    --explain-analyze \
+    --flamegraph-dir "$OUTPUT_DIR/flamegraphs/baseline" \
+    --output "$OUTPUT_DIR/baseline_light.json" > "$OUTPUT_DIR/baseline_light.log" 2>&1 && echo " done" || echo " FAILED"
+echo ""
+
+# ============================================================
+# Phase 3: Heavy queries alone (establish spill baseline)
+# ============================================================
+echo ">>> Phase 3: Heavy queries alone..."
+NUM_HEAVY=$(python3 -c "import json; print(len(json.load(open('$HEAVY_MANIFEST'))['queries']))")
+for idx in $(seq 0 $((NUM_HEAVY - 1))); do
+    echo -n "  Heavy idx ${idx}..."
+    timeout 600 target/release/in_process \
+        --manifest "$HEAVY_MANIFEST" \
+        --bench-mode liquid \
+        --max-memory-mb $MAX_MEMORY_MB \
+        --iteration 1 \
+        --query-index $idx \
+        --output "$OUTPUT_DIR/heavy_alone_idx${idx}.json" > "$OUTPUT_DIR/heavy_alone_idx${idx}.log" 2>&1 && echo " done" || echo " FAILED/TIMEOUT"
 done
+echo ""
 
 # ============================================================
-# Phase 4: DataFusion baseline (no liquid cache)
+# Phase 4: Concurrent — heavy background + light foreground
 # ============================================================
+echo ">>> Phase 4: Concurrent mix (heavy bg + light fg)..."
+for idx in $(seq 0 $((NUM_HEAVY - 1))); do
+    echo -n "  Heavy idx ${idx} bg + light fg..."
+
+    # Launch heavy in background
+    target/release/in_process \
+        --manifest "$HEAVY_MANIFEST" \
+        --bench-mode liquid \
+        --max-memory-mb $MAX_MEMORY_MB \
+        --iteration 1 \
+        --query-index $idx \
+        --output "$OUTPUT_DIR/concurrent_heavy_idx${idx}.json" > "$OUTPUT_DIR/concurrent_heavy_idx${idx}.log" 2>&1 &
+    HEAVY_PID=$!
+
+    # Run light queries in foreground while heavy runs
+    timeout 600 target/release/in_process \
+        --manifest "$LIGHT_MANIFEST" \
+        --bench-mode liquid \
+        --max-memory-mb $MAX_MEMORY_MB \
+        --iteration 1 \
+        --explain-analyze \
+        --flamegraph-dir "$OUTPUT_DIR/flamegraphs/concurrent_heavy${idx}" \
+        --output "$OUTPUT_DIR/concurrent_light_during_heavy${idx}.json" > "$OUTPUT_DIR/concurrent_light_during_heavy${idx}.log" 2>&1 || true
+
+    wait $HEAVY_PID 2>/dev/null || true
+    echo " done"
+done
 echo ""
-echo "=== Phase 4: DataFusion baseline (no numeric cache) ==="
-cargo run --release --bin in_process -- \
-  --manifest "$LIGHT_MANIFEST" \
-  --bench-mode datafusion-default \
-  --iteration "$ITERATIONS" \
-  --output "$OUTPUT_DIR/datafusion_baseline.json" \
-  2>/dev/null
-echo "  Done."
 
 # ============================================================
-# Summary
+# Phase 5: Generate report
 # ============================================================
+echo ">>> Generating report..."
+python3 - "$OUTPUT_DIR" "$ITERATIONS" "$LIGHT_MANIFEST" "$HEAVY_MANIFEST" <<'PYEOF'
+import json, sys, os
+
+output_dir = sys.argv[1]
+iterations = int(sys.argv[2])
+light_manifest = sys.argv[3]
+heavy_manifest = sys.argv[4]
+
+with open(light_manifest) as f:
+    light_queries = json.load(f)["queries"]
+with open(heavy_manifest) as f:
+    heavy_queries = json.load(f)["queries"]
+
+num_light = len(light_queries)
+num_heavy = len(heavy_queries)
+
+def load_results(filepath):
+    """Load all query results from a benchmark output."""
+    try:
+        with open(filepath) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+def get_query_times(data, query_idx=None):
+    """Get time_millis for a query (or all queries). Returns list of per-iteration times."""
+    if data is None:
+        return []
+    results = data.get("results", [])
+    if query_idx is not None:
+        if query_idx >= len(results):
+            return []
+        return [r["time_millis"] for r in results[query_idx]["iteration_results"]]
+    # All queries, return list of hot-avg per query
+    out = []
+    for qr in results:
+        times = [r["time_millis"] for r in qr["iteration_results"]]
+        hot = times[1:] if len(times) > 1 else times
+        out.append(sum(hot) / len(hot) if hot else 0)
+    return out
+
+def get_cache_stats_last(data, query_idx=0):
+    """Get cache_stats from last iteration of a query."""
+    try:
+        results = data["results"][query_idx]["iteration_results"]
+        return results[-1].get("cache_stats")
+    except (TypeError, KeyError, IndexError):
+        return None
+
+# Load data
+df_baseline = load_results(f"{output_dir}/datafusion_baseline.json")
+baseline_light = load_results(f"{output_dir}/baseline_light.json")
+concurrent_lights = {}
+for idx in range(num_heavy):
+    concurrent_lights[idx] = load_results(f"{output_dir}/concurrent_light_during_heavy{idx}.json")
+
+# Generate report
+report_path = f"{output_dir}/report.md"
+with open(report_path, "w") as f:
+    f.write("# Numeric Filter Cache — Concurrent Mix Benchmark\n\n")
+    f.write("## Configuration\n\n")
+    f.write("| Parameter | Value |\n|---|---|\n")
+    f.write(f"| Iterations | {iterations} |\n")
+    f.write("| Cache policy | S3-FIFO (LiquidPolicy) |\n")
+    f.write("| Squeeze policy | TranscodeSqueezeEvict |\n")
+    f.write("| Hydration | NoHydration |\n")
+    f.write("| Strategy | Numeric predicate-only caching |\n\n")
+
+    # Summary table: per light query, compare baseline vs concurrent vs datafusion
+    f.write("## Per-Query Latency Comparison\n\n")
+    f.write("| Query | DataFusion (ms) | Cache baseline (ms) | ")
+    for idx in range(num_heavy):
+        f.write(f"During heavy{idx} (ms) | ")
+    f.write("Max regression | Speedup vs DF |\n")
+
+    f.write("|-------|-----------------|--------------------| ")
+    for _ in range(num_heavy):
+        f.write("---| ")
+    f.write("---| ---|\n")
+
+    for qi in range(num_light):
+        qname = os.path.basename(light_queries[qi]).replace(".sql", "")
+
+        # DataFusion baseline
+        df_times = get_query_times(df_baseline, qi) if df_baseline else []
+        df_hot = df_times[1:] if len(df_times) > 1 else df_times
+        df_avg = sum(df_hot) / len(df_hot) if df_hot else 0
+
+        # Cache-hot baseline
+        bl_times = get_query_times(baseline_light, qi) if baseline_light else []
+        bl_hot = bl_times[1:] if len(bl_times) > 1 else bl_times
+        bl_avg = sum(bl_hot) / len(bl_hot) if bl_hot else 0
+
+        # Concurrent
+        conc_avgs = []
+        for idx in range(num_heavy):
+            cd = concurrent_lights.get(idx)
+            ct = get_query_times(cd, qi) if cd else []
+            conc_avgs.append(ct[0] if ct else 0)
+
+        max_conc = max(conc_avgs) if conc_avgs else 0
+        regression = ((max_conc - bl_avg) / bl_avg * 100) if bl_avg > 0 else 0
+        speedup = df_avg / bl_avg if bl_avg > 0 else 0
+
+        f.write(f"| {qname} | {df_avg:.0f} | {bl_avg:.0f} | ")
+        for ca in conc_avgs:
+            f.write(f"{ca:.0f} | ")
+        f.write(f"{regression:+.0f}% | {speedup:.2f}x |\n")
+
+    # Cache stats summary
+    f.write("\n## Cache Stats (baseline, last iteration)\n\n")
+    f.write("| Query | Entries | Mem (MB) | Disk (MB) | cache_hit | eval_predicate | squeezed_success |\n")
+    f.write("|-------|---------|----------|-----------|-----------|----------------|------------------|\n")
+    for qi in range(num_light):
+        qname = os.path.basename(light_queries[qi]).replace(".sql", "")
+        stats = get_cache_stats_last(baseline_light, qi)
+        if stats:
+            rt = stats.get("runtime", {})
+            f.write(f"| {qname} | {stats.get('total_entries', 0)} | "
+                    f"{stats.get('memory_usage_bytes', 0)//(1024*1024)} | "
+                    f"{stats.get('disk_usage_bytes', 0)//(1024*1024)} | "
+                    f"{rt.get('cache_hit', 0)} | "
+                    f"{rt.get('eval_predicate', 0)} | "
+                    f"{rt.get('get_squeezed_success', 0)} |\n")
+        else:
+            f.write(f"| {qname} | - | - | - | - | - | - |\n")
+
+    f.write("\n## Key Findings\n\n")
+    f.write("- **Numeric cache baseline vs DataFusion:** Shows benefit of caching numeric predicates\n")
+    f.write("- **Concurrent regression:** How much light queries slow down when heavy queries compete\n")
+    f.write("- **Expected:** Low regression = squeezed numeric data stays hot in cache, independent of spill pressure\n")
+
+print(f"Report: {report_path}")
+
+# Console summary
+print("\n" + "=" * 80)
+print("  CONCURRENT MIX SUMMARY")
+print("=" * 80)
+
+if baseline_light and df_baseline:
+    print(f"\n  {'Query':<25}{'DF(ms)':<10}{'Cache(ms)':<12}{'Speedup':<10}{'Max conc(ms)':<14}{'Regression'}")
+    print(f"  {'-'*75}")
+    for qi in range(num_light):
+        qname = os.path.basename(light_queries[qi]).replace(".sql", "")[:24]
+        df_times = get_query_times(df_baseline, qi)
+        df_hot = df_times[1:] if len(df_times) > 1 else df_times
+        df_avg = sum(df_hot) / len(df_hot) if df_hot else 0
+
+        bl_times = get_query_times(baseline_light, qi)
+        bl_hot = bl_times[1:] if len(bl_times) > 1 else bl_times
+        bl_avg = sum(bl_hot) / len(bl_hot) if bl_hot else 0
+
+        conc_avgs = []
+        for idx in range(num_heavy):
+            cd = concurrent_lights.get(idx)
+            ct = get_query_times(cd, qi) if cd else []
+            conc_avgs.append(ct[0] if ct else 0)
+        max_conc = max(conc_avgs) if conc_avgs else 0
+        regression = ((max_conc - bl_avg) / bl_avg * 100) if bl_avg > 0 else 0
+        speedup = df_avg / bl_avg if bl_avg > 0 else 0
+
+        print(f"  {qname:<25}{df_avg:<10.0f}{bl_avg:<12.0f}{speedup:<10.2f}{max_conc:<14.0f}{regression:+.0f}%")
+
+print("\n" + "=" * 80)
+PYEOF
+
 echo ""
-echo "=============================================="
-echo "Done. Results in $OUTPUT_DIR/"
-echo "=============================================="
-echo ""
-echo "Files:"
-echo "  baseline_light.json                       — numeric cache, no contention"
-echo "  concurrent_light_during_heavy_idx*.json   — numeric cache under pressure"
-echo "  datafusion_baseline.json                  — no liquid cache"
-echo ""
-echo "Key metrics:"
-echo "  - time_millis: latency of light queries"
-echo "  - cache_stats.runtime.cache_hit / cache_miss"
-echo "  - cache_stats.runtime.eval_predicate (numeric predicate from cache)"
-echo "  - cache_stats.runtime.get_squeezed_success (served squeezed)"
+echo "=== Done! ==="
+echo "  Report: $OUTPUT_DIR/report.md"
+echo "  Flamegraphs: $OUTPUT_DIR/flamegraphs/"
