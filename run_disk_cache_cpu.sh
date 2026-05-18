@@ -30,10 +30,25 @@ OUTPUT_DIR="outputs/disk_cache_cpu"
 ITERATIONS=5
 
 # Memory configs:
-#   LO = forces most data to disk cache (smaller than working set)
+#   LO = forces most data to disk cache (must be smaller than working set)
 #   HI = everything fits in memory
-MEM_LO=64
+#
+# Working sets from concurrent_mix results:
+#   c0: 362MB (23080 entries) → use 64MB to force heavy spill
+#   c1: 6MB (291 entries)     → use 2MB to force spill
+#   q1: 181MB (11540 entries) → use 64MB to force spill
+#   q7: 181MB (11540 entries) → use 64MB to force spill
+#   q40: 24MB (860 entries)   → use 8MB to force spill
 MEM_HI=2048
+
+# Per-query low memory (forces disk spill for each)
+# Must be BELOW working set to guarantee disk cache reads
+declare -A MEM_LO_MAP
+MEM_LO_MAP[0]=64    # c0: 362MB working set
+MEM_LO_MAP[1]=2     # c1: 6MB working set
+MEM_LO_MAP[7]=64    # q1: 181MB working set
+MEM_LO_MAP[8]=64    # q7: 181MB working set
+MEM_LO_MAP[9]=8     # q40: 24MB working set
 
 # Query indices in manifest_light.json
 QUERIES="0 1 7 8 9"
@@ -90,10 +105,11 @@ done
 echo ""
 
 # Mode B: Liquid with tiny memory (disk cache reads)
-echo "  💾 Mode B: Liquid ${MEM_LO}MB (disk cache, no decode)..."
+echo "  💾 Mode B: Liquid (per-query low memory, disk cache, no decode)..."
 idx=0
 for qi in $QUERIES; do
-    echo -n "    🔹 [${qi}] ${QUERY_NAMES[$idx]}..."
+    MEM_LO=${MEM_LO_MAP[$qi]}
+    echo -n "    🔹 [${qi}] ${QUERY_NAMES[$idx]} (${MEM_LO}MB)..."
     timeout 600 target/release/in_process \
         --manifest "$MANIFEST" \
         --bench-mode liquid \
@@ -136,14 +152,15 @@ echo ""
 
 CONC_QUERY=7  # q1 in light manifest
 CONC_COPIES=4
+CONC_MEM_LO=${MEM_LO_MAP[7]}  # 64MB for q1
 
 for mode_name in parquet disk mem; do
     if [ "$mode_name" = "parquet" ]; then
         MODE_ARGS="--bench-mode parquet"
         LABEL="Parquet (decode per copy)"
     elif [ "$mode_name" = "disk" ]; then
-        MODE_ARGS="--bench-mode liquid --max-memory-mb $MEM_LO"
-        LABEL="Disk cache ${MEM_LO}MB (no decode)"
+        MODE_ARGS="--bench-mode liquid --max-memory-mb $CONC_MEM_LO"
+        LABEL="Disk cache ${CONC_MEM_LO}MB (no decode)"
     else
         MODE_ARGS="--bench-mode liquid --max-memory-mb $MEM_HI"
         LABEL="Memory cache ${MEM_HI}MB (no I/O)"
@@ -184,14 +201,15 @@ echo ""
 
 HEAVY_QUERY=0  # q4 in heavy manifest
 LIGHT_QUERY=7  # q1 in light manifest
+MIXED_MEM_LO=${MEM_LO_MAP[7]}  # 64MB for q1
 
 for mode_name in parquet disk mem; do
     if [ "$mode_name" = "parquet" ]; then
         MODE_ARGS="--bench-mode parquet"
         LABEL="Parquet"
     elif [ "$mode_name" = "disk" ]; then
-        MODE_ARGS="--bench-mode liquid --max-memory-mb $MEM_LO"
-        LABEL="Disk cache ${MEM_LO}MB"
+        MODE_ARGS="--bench-mode liquid --max-memory-mb $MIXED_MEM_LO"
+        LABEL="Disk cache ${MIXED_MEM_LO}MB"
     else
         MODE_ARGS="--bench-mode liquid --max-memory-mb $MEM_HI"
         LABEL="Memory cache ${MEM_HI}MB"
@@ -227,14 +245,16 @@ echo ""
 # Generate report
 # ============================================================
 echo "📝 Generating report..."
-python3 - "$OUTPUT_DIR" "$ITERATIONS" "$MEM_LO" "$MEM_HI" "$QUERIES" <<'PYEOF'
+python3 - "$OUTPUT_DIR" "$ITERATIONS" "$MEM_HI" "$QUERIES" <<'PYEOF'
 import json, sys, os
 
 output_dir = sys.argv[1]
 iterations = int(sys.argv[2])
-mem_lo = int(sys.argv[3])
-mem_hi = int(sys.argv[4])
-queries = sys.argv[5].split()
+mem_hi = int(sys.argv[3])
+queries = sys.argv[4].split()
+
+# Per-query low memory configs (must match shell MEM_LO_MAP)
+mem_lo_map = {"0": 64, "1": 2, "7": 64, "8": 64, "9": 8}
 
 query_names = ["c0_range_filter", "c1_multi_numeric_pred", "q1_advengine_ne0", "q7_group_advengine", "q40_multi_pred_selective"]
 
@@ -287,8 +307,15 @@ with open(report_path, "w") as f:
     f.write("## Modes Compared\n\n")
     f.write("| Mode | Description | Memory budget |\n|------|-------------|---------------|\n")
     f.write(f"| A: Parquet | DataFusion reads Parquet directly, full decode every query | Unlimited |\n")
-    f.write(f"| B: Disk cache | LiquidCache with {mem_lo}MB memory — data evicted to disk in decoded format | {mem_lo}MB |\n")
+    f.write(f"| B: Disk cache | LiquidCache with per-query low memory — data evicted to disk in decoded format | Per-query (see below) |\n")
     f.write(f"| C: Memory cache | LiquidCache with {mem_hi}MB memory — everything in RAM | {mem_hi}MB |\n\n")
+    f.write("**Per-query disk-mode memory budgets** (chosen to be below working set, forcing disk spill):\n\n")
+    f.write("| Query | Working set | Disk mode budget |\n|-------|-------------|------------------|\n")
+    working_sets = {"0": "362MB", "1": "6MB", "7": "181MB", "8": "181MB", "9": "24MB"}
+    for i, qi in enumerate(queries):
+        name = query_names[i] if i < len(query_names) else f"q{qi}"
+        f.write(f"| {name} | {working_sets.get(qi, '?')} | {mem_lo_map.get(qi, 64)}MB |\n")
+    f.write("\n")
 
     # ---- Experiment 1: Per-query comparison ----
     f.write("---\n\n## Experiment 1: CPU Cost per Query (single query, no contention)\n\n")
@@ -329,7 +356,8 @@ with open(report_path, "w") as f:
         dk_cycles = dk_perf.get("cpu_cycles", 0) if dk_perf else 0
         dk_instr = dk_perf.get("instructions", 0) if dk_perf else 0
         dk_speedup = pq_min / dk_min if dk_min > 0 else 0
-        f.write(f"| | Disk {mem_lo}MB | {dk_min} | {dk_cycles:,} | {dk_instr:,} | {dk_disk:.1f} | {dk_io} | {dk_speedup:.2f}× |\n")
+        q_mem_lo = mem_lo_map.get(qi, 64)
+        f.write(f"| | Disk {q_mem_lo}MB | {dk_min} | {dk_cycles:,} | {dk_instr:,} | {dk_disk:.1f} | {dk_io} | {dk_speedup:.2f}× |\n")
 
         mm_cycles = mm_perf.get("cpu_cycles", 0) if mm_perf else 0
         mm_instr = mm_perf.get("instructions", 0) if mm_perf else 0
@@ -353,7 +381,7 @@ with open(report_path, "w") as f:
         dk_stats = get_cache_stats(dk) if dk else None
         if dk_stats:
             rt = dk_stats.get("runtime", {})
-            f.write(f"#### Cache Stats — Disk mode ({mem_lo}MB, last iteration)\n\n")
+            f.write(f"#### Cache Stats — Disk mode ({mem_lo_map.get(qi, 64)}MB, last iteration)\n\n")
             f.write("```\n")
             f.write(f"total_entries: {dk_stats.get('total_entries', 0)}\n")
             f.write(f"memory_arrow_entries: {dk_stats.get('memory_arrow_entries', 0)}\n")
@@ -408,7 +436,7 @@ with open(report_path, "w") as f:
             blocks = content.split("=== EXPLAIN ANALYZE")
             if len(blocks) >= 2:
                 last_block = blocks[-1][:4000]
-                f.write(f"<details>\n<summary>EXPLAIN ANALYZE — Disk mode ({mem_lo}MB, last iteration)</summary>\n\n```\n")
+                f.write(f"<details>\n<summary>EXPLAIN ANALYZE — Disk mode ({mem_lo_map.get(qi, 64)}MB, last iteration)</summary>\n\n```\n")
                 f.write("=== EXPLAIN ANALYZE" + last_block.strip())
                 f.write("\n```\n</details>\n\n")
 
@@ -453,7 +481,7 @@ with open(report_path, "w") as f:
         conc_results[mode] = total_ms
 
     pq_total = conc_results.get("parquet", 1)
-    for mode, label in [("parquet", "Parquet (full decode)"), ("disk", f"Disk cache {mem_lo}MB"), ("mem", f"Memory cache {mem_hi}MB")]:
+    for mode, label in [("parquet", "Parquet (full decode)"), ("disk", f"Disk cache (per-query)"), ("mem", f"Memory cache {mem_hi}MB")]:
         total_ms = conc_results[mode]
         qps = (4 * iterations * 1000 / total_ms) if total_ms > 0 else 0
         speedup = pq_total / total_ms if total_ms > 0 else 0
@@ -481,7 +509,7 @@ with open(report_path, "w") as f:
     dk_mixed_cycles = dk_mixed_perf.get("cpu_cycles", 0) if dk_mixed_perf else 0
     dk_mixed_disk = get_disk_read(dk_mixed) if dk_mixed else 0
     dk_mixed_speedup = pq_mixed_min / dk_mixed_min if dk_mixed_min > 0 else 0
-    f.write(f"| Disk cache {mem_lo}MB | {dk_mixed_min} | {dk_mixed_cycles:,} | {dk_mixed_disk:.1f} | {dk_mixed_speedup:.2f}× |\n")
+    f.write(f"| Disk cache {mem_lo_map.get('7', 64)}MB | {dk_mixed_min} | {dk_mixed_cycles:,} | {dk_mixed_disk:.1f} | {dk_mixed_speedup:.2f}× |\n")
 
     mm_mixed = load_json(f"{output_dir}/mixed_light_mem.json")
     mm_mixed_times = get_times(mm_mixed) if mm_mixed else []
