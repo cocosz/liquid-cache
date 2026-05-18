@@ -298,6 +298,63 @@ done
 echo ""
 
 # ============================================================
+# EXPERIMENT C: Throughput measurement
+# Run 4 parallel copies of a query mix, measure total wall time
+# This directly answers: does disk cache improve queries/second?
+# ============================================================
+echo "═══════════════════════════════════════════════════════════"
+echo "  ⚡ EXPERIMENT C: Throughput (4 parallel query streams)"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+echo "  4 parallel copies of q1 (full scan numeric filter)"
+echo "  Measures total wall time → queries/second"
+echo ""
+
+THROUGHPUT_QUERY=7  # q1 in light manifest
+THROUGHPUT_COPIES=4
+THROUGHPUT_ITERS=5
+
+for mode in parquet disk mem; do
+    if [ "$mode" = "parquet" ]; then
+        MODE_ARGS="--bench-mode parquet"
+        LABEL="Parquet (full decode each copy)"
+    elif [ "$mode" = "disk" ]; then
+        MODE_ARGS="--bench-mode liquid --max-memory-mb 72"
+        LABEL="Disk cache 72MB"
+    else
+        MODE_ARGS="--bench-mode liquid --max-memory-mb $LIGHT_MEM_HI"
+        LABEL="Memory cache ${LIGHT_MEM_HI}MB"
+    fi
+
+    echo -n "  🔸 $LABEL..."
+    sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches' 2>/dev/null || true
+    START_NS=$(date +%s%N)
+
+    PIDS=()
+    for c in $(seq 1 $THROUGHPUT_COPIES); do
+        target/release/in_process \
+            --manifest "$LIGHT_MANIFEST" \
+            $MODE_ARGS \
+            --iteration $THROUGHPUT_ITERS \
+            --query-index $THROUGHPUT_QUERY \
+            --perf-events \
+            --output "$OUTPUT_DIR/c_${mode}_copy${c}.json" > "$OUTPUT_DIR/c_${mode}_copy${c}.log" 2>&1 &
+        PIDS+=($!)
+    done
+
+    for pid in "${PIDS[@]}"; do
+        wait $pid 2>/dev/null || true
+    done
+
+    END_NS=$(date +%s%N)
+    ELAPSED_MS=$(( (END_NS - START_NS) / 1000000 ))
+    TOTAL_QUERIES=$(( THROUGHPUT_COPIES * THROUGHPUT_ITERS ))
+    echo " ✅ ${ELAPSED_MS}ms total, ${TOTAL_QUERIES} queries"
+    echo "${ELAPSED_MS}" > "$OUTPUT_DIR/c_${mode}_total_ms.txt"
+done
+echo ""
+
+# ============================================================
 # Generate report
 # ============================================================
 echo "📝 Generating report..."
@@ -343,6 +400,18 @@ def get_disk_bytes(data, qi=0):
     except:
         return 0
 
+def get_scan_time(data, qi=0):
+    """Extract time_elapsed_scanning_total from the log (proxy for decode time)."""
+    # This comes from the JSON cache_cpu_time field which tracks scan time
+    try:
+        last = data["results"][qi]["iteration_results"][-1]
+        cpu_time = last.get("cache_cpu_time", 0)
+        if cpu_time > 0:
+            return f"{cpu_time/1000:.1f}ms"
+        return "—"
+    except:
+        return "—"
+
 report_path = f"{output_dir}/report.md"
 with open(report_path, "w") as f:
     f.write("# Disk Cache vs Parquet Under CPU Contention\n\n")
@@ -365,8 +434,8 @@ with open(report_path, "w") as f:
 
         # Baseline (no contention)
         f.write("#### Without contention (baseline)\n\n")
-        f.write("| Mode | All iterations (ms) | Min hot | Disk read (MB) |\n")
-        f.write("|------|--------------------:|--------:|---------------:|\n")
+        f.write("| Mode | All iterations (ms) | Min hot | CPU cycles | Instructions | Scan time | Disk read (MB) |\n")
+        f.write("|------|--------------------:|--------:|-----------:|------------:|----------:|---------------:|\n")
 
         pq_bl = load_json(f"{output_dir}/a1_{name}_parquet.json")
         dk_bl = load_json(f"{output_dir}/a1_{name}_disk.json")
@@ -379,14 +448,31 @@ with open(report_path, "w") as f:
         dk_bl_min = hot_min(dk_bl_t)
         mm_bl_min = hot_min(mm_bl_t)
 
-        f.write(f"| Parquet | {pq_bl_t} | {pq_bl_min} | {get_disk_bytes(pq_bl):.1f} |\n")
-        f.write(f"| Disk cache {disk_mem}MB | {dk_bl_t} | {dk_bl_min} | {get_disk_bytes(dk_bl):.1f} |\n")
-        f.write(f"| Memory cache 2048MB | {mm_bl_t} | {mm_bl_min} | {get_disk_bytes(mm_bl):.1f} |\n\n")
+        pq_bl_perf = get_perf(pq_bl) if pq_bl else None
+        dk_bl_perf = get_perf(dk_bl) if dk_bl else None
+        mm_bl_perf = get_perf(mm_bl) if mm_bl else None
+
+        pq_bl_scan = get_scan_time(pq_bl) if pq_bl else "—"
+        dk_bl_scan = get_scan_time(dk_bl) if dk_bl else "—"
+        mm_bl_scan = get_scan_time(mm_bl) if mm_bl else "—"
+
+        def fmt_perf(p):
+            if not p:
+                return "—", "—"
+            return f"{p.get('cpu_cycles',0):,}", f"{p.get('instructions',0):,}"
+
+        pq_c_str, pq_i_str = fmt_perf(pq_bl_perf)
+        dk_c_str, dk_i_str = fmt_perf(dk_bl_perf)
+        mm_c_str, mm_i_str = fmt_perf(mm_bl_perf)
+
+        f.write(f"| Parquet | {pq_bl_t} | {pq_bl_min} | {pq_c_str} | {pq_i_str} | {pq_bl_scan} | {get_disk_bytes(pq_bl):.1f} |\n")
+        f.write(f"| Disk cache {disk_mem}MB | {dk_bl_t} | {dk_bl_min} | {dk_c_str} | {dk_i_str} | {dk_bl_scan} | {get_disk_bytes(dk_bl):.1f} |\n")
+        f.write(f"| Memory cache 2048MB | {mm_bl_t} | {mm_bl_min} | {mm_c_str} | {mm_i_str} | {mm_bl_scan} | {get_disk_bytes(mm_bl):.1f} |\n\n")
 
         # Under contention
         f.write("#### Under contention (heavy q4 in background)\n\n")
-        f.write("| Mode | All iterations (ms) | Min hot | Speedup vs Parquet | Regression vs baseline |\n")
-        f.write("|------|--------------------:|--------:|-------------------:|-----------------------:|\n")
+        f.write("| Mode | All iterations (ms) | Min hot | CPU cycles | Instructions | Speedup vs Parquet | Regression vs baseline |\n")
+        f.write("|------|--------------------:|--------:|-----------:|------------:|-------------------:|-----------------------:|\n")
 
         pq_c = load_json(f"{output_dir}/a2_{name}_parquet.json")
         dk_c = load_json(f"{output_dir}/a2_{name}_disk.json")
@@ -399,15 +485,23 @@ with open(report_path, "w") as f:
         dk_c_min = hot_min(dk_c_t)
         mm_c_min = hot_min(mm_c_t)
 
+        pq_c_perf = get_perf(pq_c) if pq_c else None
+        dk_c_perf = get_perf(dk_c) if dk_c else None
+        mm_c_perf = get_perf(mm_c) if mm_c else None
+
         dk_sp = pq_c_min / dk_c_min if dk_c_min > 0 else 0
         mm_sp = pq_c_min / mm_c_min if mm_c_min > 0 else 0
         pq_regr = ((pq_c_min - pq_bl_min) / pq_bl_min * 100) if pq_bl_min > 0 else 0
         dk_regr = ((dk_c_min - dk_bl_min) / dk_bl_min * 100) if dk_bl_min > 0 else 0
         mm_regr = ((mm_c_min - mm_bl_min) / mm_bl_min * 100) if mm_bl_min > 0 else 0
 
-        f.write(f"| Parquet | {pq_c_t} | {pq_c_min} | 1.00× | +{pq_regr:.0f}% |\n")
-        f.write(f"| Disk cache {disk_mem}MB | {dk_c_t} | {dk_c_min} | {dk_sp:.2f}× | +{dk_regr:.0f}% |\n")
-        f.write(f"| Memory cache 2048MB | {mm_c_t} | {mm_c_min} | {mm_sp:.2f}× | +{mm_regr:.0f}% |\n\n")
+        pq_cc, pq_ci = fmt_perf(pq_c_perf)
+        dk_cc, dk_ci = fmt_perf(dk_c_perf)
+        mm_cc, mm_ci = fmt_perf(mm_c_perf)
+
+        f.write(f"| Parquet | {pq_c_t} | {pq_c_min} | {pq_cc} | {pq_ci} | 1.00× | +{pq_regr:.0f}% |\n")
+        f.write(f"| Disk cache {disk_mem}MB | {dk_c_t} | {dk_c_min} | {dk_cc} | {dk_ci} | {dk_sp:.2f}× | +{dk_regr:.0f}% |\n")
+        f.write(f"| Memory cache 2048MB | {mm_c_t} | {mm_c_min} | {mm_cc} | {mm_ci} | {mm_sp:.2f}× | +{mm_regr:.0f}% |\n\n")
 
         # Analysis
         f.write("**Analysis:** ")
@@ -462,8 +556,8 @@ with open(report_path, "w") as f:
 
         # Alone
         f.write("#### Alone (no contention)\n\n")
-        f.write("| Mode | All iterations (ms) | Min hot | Speedup vs Parquet | Disk read (MB) |\n")
-        f.write("|------|--------------------:|--------:|-------------------:|---------------:|\n")
+        f.write("| Mode | All iterations (ms) | Min hot | CPU cycles | Instructions | Speedup vs Parquet | Disk read (MB) |\n")
+        f.write("|------|--------------------:|--------:|-----------:|------------:|-------------------:|---------------:|\n")
 
         pq = load_json(f"{output_dir}/b1_{name}_parquet.json")
         dk = load_json(f"{output_dir}/b1_{name}_disk.json")
@@ -476,17 +570,25 @@ with open(report_path, "w") as f:
         dk_min = hot_min(dk_t)
         mm_min = hot_min(mm_t)
 
+        pq_perf = get_perf(pq) if pq else None
+        dk_perf = get_perf(dk) if dk else None
+        mm_perf = get_perf(mm) if mm else None
+
         dk_sp = pq_min / dk_min if dk_min > 0 else 0
         mm_sp = pq_min / mm_min if mm_min > 0 else 0
 
-        f.write(f"| Parquet | {pq_t} | {pq_min} | 1.00× | {get_disk_bytes(pq):.1f} |\n")
-        f.write(f"| Disk cache {disk_mem}MB | {dk_t} | {dk_min} | {dk_sp:.2f}× | {get_disk_bytes(dk):.1f} |\n")
-        f.write(f"| Memory cache 2048MB | {mm_t} | {mm_min} | {mm_sp:.2f}× | {get_disk_bytes(mm):.1f} |\n\n")
+        pq_c_s, pq_i_s = fmt_perf(pq_perf)
+        dk_c_s, dk_i_s = fmt_perf(dk_perf)
+        mm_c_s, mm_i_s = fmt_perf(mm_perf)
+
+        f.write(f"| Parquet | {pq_t} | {pq_min} | {pq_c_s} | {pq_i_s} | 1.00× | {get_disk_bytes(pq):.1f} |\n")
+        f.write(f"| Disk cache {disk_mem}MB | {dk_t} | {dk_min} | {dk_c_s} | {dk_i_s} | {dk_sp:.2f}× | {get_disk_bytes(dk):.1f} |\n")
+        f.write(f"| Memory cache 2048MB | {mm_t} | {mm_min} | {mm_c_s} | {mm_i_s} | {mm_sp:.2f}× | {get_disk_bytes(mm):.1f} |\n\n")
 
         # Under contention
         f.write("#### Under contention (another heavy in background)\n\n")
-        f.write("| Mode | All iterations (ms) | Min hot | Speedup vs Parquet | Regression vs alone |\n")
-        f.write("|------|--------------------:|--------:|-------------------:|--------------------:|\n")
+        f.write("| Mode | All iterations (ms) | Min hot | CPU cycles | Instructions | Speedup vs Parquet | Regression vs alone |\n")
+        f.write("|------|--------------------:|--------:|-----------:|------------:|-------------------:|--------------------:|\n")
 
         pq_c = load_json(f"{output_dir}/b2_{name}_parquet.json")
         dk_c = load_json(f"{output_dir}/b2_{name}_disk.json")
@@ -499,15 +601,23 @@ with open(report_path, "w") as f:
         dk_c_min = hot_min(dk_c_t)
         mm_c_min = hot_min(mm_c_t)
 
+        pq_c_perf = get_perf(pq_c) if pq_c else None
+        dk_c_perf = get_perf(dk_c) if dk_c else None
+        mm_c_perf = get_perf(mm_c) if mm_c else None
+
         dk_c_sp = pq_c_min / dk_c_min if dk_c_min > 0 else 0
         mm_c_sp = pq_c_min / mm_c_min if mm_c_min > 0 else 0
         pq_regr = ((pq_c_min - pq_min) / pq_min * 100) if pq_min > 0 else 0
         dk_regr = ((dk_c_min - dk_min) / dk_min * 100) if dk_min > 0 else 0
         mm_regr = ((mm_c_min - mm_min) / mm_min * 100) if mm_min > 0 else 0
 
-        f.write(f"| Parquet | {pq_c_t} | {pq_c_min} | 1.00× | +{pq_regr:.0f}% |\n")
-        f.write(f"| Disk cache {disk_mem}MB | {dk_c_t} | {dk_c_min} | {dk_c_sp:.2f}× | +{dk_regr:.0f}% |\n")
-        f.write(f"| Memory cache 2048MB | {mm_c_t} | {mm_c_min} | {mm_c_sp:.2f}× | +{mm_regr:.0f}% |\n\n")
+        pq_cc, pq_ci = fmt_perf(pq_c_perf)
+        dk_cc, dk_ci = fmt_perf(dk_c_perf)
+        mm_cc, mm_ci = fmt_perf(mm_c_perf)
+
+        f.write(f"| Parquet | {pq_c_t} | {pq_c_min} | {pq_cc} | {pq_ci} | 1.00× | +{pq_regr:.0f}% |\n")
+        f.write(f"| Disk cache {disk_mem}MB | {dk_c_t} | {dk_c_min} | {dk_cc} | {dk_ci} | {dk_c_sp:.2f}× | +{dk_regr:.0f}% |\n")
+        f.write(f"| Memory cache 2048MB | {mm_c_t} | {mm_c_min} | {mm_cc} | {mm_ci} | {mm_c_sp:.2f}× | +{mm_regr:.0f}% |\n\n")
 
         # Analysis
         f.write("**Analysis:** ")
@@ -546,8 +656,50 @@ with open(report_path, "w") as f:
 
         f.write("---\n\n")
 
-    # ---- Conclusion ----
+    # ---- Experiment C throughput already computed from A & B above ----
+
+    # ---- Conclusion continued ----
     f.write("## Conclusion\n\n")
+
+    # CPU savings summary
+    f.write("### CPU Savings (from Experiment A & B)\n\n")
+    f.write("| Query | Mode | Alone (ms) | Contention (ms) | Regression | CPU cycles (contention) |\n")
+    f.write("|-------|------|-----------|----------------|-----------|------------------------|\n")
+    for name in light_names:
+        for mode, label, bl_prefix, c_prefix in [("parquet", "Parquet", "a1", "a2"), ("disk", "Disk", "a1", "a2"), ("mem", "Memory", "a1", "a2")]:
+            bl_data = load_json(f"{output_dir}/{bl_prefix}_{name}_{mode}.json")
+            c_data = load_json(f"{output_dir}/{c_prefix}_{name}_{mode}.json")
+            bl_min = hot_min(get_times(bl_data)) if bl_data else 0
+            c_min = hot_min(get_times(c_data)) if c_data else 0
+            regr = ((c_min - bl_min) / bl_min * 100) if bl_min > 0 else 0
+            c_perf = get_perf(c_data) if c_data else None
+            cycles = f"{c_perf.get('cpu_cycles',0):,}" if c_perf and c_perf.get('cpu_cycles',0) > 0 else "—"
+            f.write(f"| {name} | {label} | {bl_min} | {c_min} | +{regr:.0f}% | {cycles} |\n")
+
+    f.write("\n### Throughput Impact\n\n")
+    f.write("Throughput = queries completed / wall time. Under contention:\n\n")
+
+    # Calculate effective throughput from A2 data
+    f.write("| Query | Parquet QPS | Disk cache QPS | Memory cache QPS | Disk/Parquet ratio |\n")
+    f.write("|-------|------------|----------------|------------------|-------------------|\n")
+    for name in light_names:
+        pq_c = load_json(f"{output_dir}/a2_{name}_parquet.json")
+        dk_c = load_json(f"{output_dir}/a2_{name}_disk.json")
+        mm_c = load_json(f"{output_dir}/a2_{name}_mem.json")
+        # QPS = iterations / (sum of iteration times in seconds)
+        pq_t = get_times(pq_c) if pq_c else []
+        dk_t = get_times(dk_c) if dk_c else []
+        mm_t = get_times(mm_c) if mm_c else []
+        pq_qps = (len(pq_t) * 1000 / sum(pq_t)) if pq_t and sum(pq_t) > 0 else 0
+        dk_qps = (len(dk_t) * 1000 / sum(dk_t)) if dk_t and sum(dk_t) > 0 else 0
+        mm_qps = (len(mm_t) * 1000 / sum(mm_t)) if mm_t and sum(mm_t) > 0 else 0
+        ratio = dk_qps / pq_qps if pq_qps > 0 else 0
+        f.write(f"| {name} | {pq_qps:.1f} | {dk_qps:.1f} | {mm_qps:.1f} | {ratio:.2f}× |\n")
+
+    f.write("\n**How to read:** QPS = queries per second under contention. ")
+    f.write("Disk/Parquet ratio > 1.0 means disk cache improves throughput by freeing decode CPU.\n\n")
+
+    f.write("### Summary\n\n")
     f.write("| Scenario | Disk cache advantage | Why |\n")
     f.write("|----------|---------------------|-----|\n")
     f.write("| Light query alone | ✅ if working set fits | Skip decode → faster even without contention |\n")
