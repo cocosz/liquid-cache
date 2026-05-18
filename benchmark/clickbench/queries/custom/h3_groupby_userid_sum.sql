@@ -1,0 +1,1 @@
+SELECT "UserID", SUM("AdvEngineID"), COUNT(*) FROM hits GROUP BY "UserID" HAVING COUNT(*) > 5 ORDER BY SUM("AdvEngineID") DESC LIMIT 20;

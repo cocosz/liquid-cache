@@ -1,6 +1,6 @@
 {
 	"name": "NumericCache-Heavy",
-	"description": "Heavyweight queries: high-cardinality GROUP BY on numeric columns. These will trigger spill and compete for CPU/memory. All numeric-only.",
+	"description": "Heavyweight queries: high-cardinality GROUP BY / DISTINCT on numeric columns. CPU-intensive, all numeric.",
 	"tables": {
 		"hits": "benchmark/clickbench/data/hits.parquet"
 	},
@@ -9,6 +9,11 @@
 		"benchmark/clickbench/queries/q15.sql",
 		"benchmark/clickbench/queries/q8.sql",
 		"benchmark/clickbench/queries/q32.sql",
-		"benchmark/clickbench/queries/custom/c5_heavy_numeric_agg.sql"
+		"benchmark/clickbench/queries/custom/c5_heavy_numeric_agg.sql",
+		"benchmark/clickbench/queries/custom/h0_distinct_regionid_userid.sql",
+		"benchmark/clickbench/queries/custom/h1_groupby_counterid_wide.sql",
+		"benchmark/clickbench/queries/custom/h2_double_distinct.sql",
+		"benchmark/clickbench/queries/custom/h3_groupby_userid_sum.sql",
+		"benchmark/clickbench/queries/custom/h4_groupby_clientip_stats.sql"
 	]
 }

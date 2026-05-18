@@ -1,0 +1,1 @@
+SELECT COUNT(DISTINCT "UserID"), COUNT(DISTINCT "CounterID") FROM hits WHERE "AdvEngineID" > 0;

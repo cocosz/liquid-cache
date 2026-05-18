@@ -60,9 +60,22 @@ echo "  Modes: Parquet vs Disk cache vs Memory cache"
 echo ""
 
 # Light queries and their disk-spill budgets
-LIGHT_QUERIES=(0 7)
-LIGHT_NAMES=("c0_range_filter" "q1_advengine")
-LIGHT_DISK_MEM=(144 54)  # Force partial spill
+# Criteria: numeric predicates, working set large enough to force partial spill at given budget
+# All from manifest_light.json:
+#   idx 0: c0_range_filter (362MB WS) — 2 col full scan, range filter
+#   idx 1: c1_multi_numeric_pred (6MB WS) — 4 predicates, narrow band
+#   idx 3: c3_numeric_group_filter (362MB WS) — filter + GROUP BY
+#   idx 4: c4_date_range_agg (505MB WS) — date range + aggs
+#   idx 6: c7_wide_numeric_scan (383MB WS) — 7 cols aggregated
+#   idx 7: q1_advengine_ne0 (181MB WS) — single col full scan
+#   idx 8: q7_group_advengine (181MB WS) — single col + GROUP BY
+#   idx 9: q40_multi_pred_selective (24MB WS) — 5 filters, 3 RGs
+#   idx 10: q41_hash_equality (24MB WS) — 5 filters + hash
+#   idx 11: q42_time_bucket (13MB WS) — 4 filters, narrow window
+LIGHT_QUERIES=(0 1 3 4 6 7 8 9 10 11)
+LIGHT_NAMES=("c0_range_filter" "c1_multi_numeric" "c3_group_filter" "c4_date_range" "c7_wide_scan" "q1_advengine" "q7_group_advengine" "q40_multi_pred" "q41_hash_eq" "q42_time_bucket")
+# Budget at ~40% of working set to force partial disk spill
+LIGHT_DISK_MEM=(144 2 144 200 153 72 72 10 10 5)
 LIGHT_MEM_HI=2048
 
 HEAVY_BG_IDX=0  # q4 in heavy manifest
@@ -172,12 +185,21 @@ echo "  If heavy query data is pre-cached on disk, it skips decode"
 echo "  → frees CPU cycles for hash table work → finishes faster"
 echo ""
 
-# Heavy queries to test (from heavy manifest)
-# idx 0: q4 COUNT(DISTINCT UserID) — full scan Int64
+# Heavy queries to test (from heavy manifest — all 10)
+# idx 0: q4 COUNT(DISTINCT UserID) — 17M distinct Int64
+# idx 1: q15 GROUP BY UserID ORDER BY COUNT — 17M groups
 # idx 2: q8 GROUP BY RegionID, COUNT(DISTINCT UserID)
-HEAVY_QUERIES=(0 2)
-HEAVY_NAMES=("q4_count_distinct" "q8_distinct_groupby")
-HEAVY_DISK_MEM=(200 200)  # Force partial spill for heavy queries
+# idx 3: q32 GROUP BY WatchID, ClientIP — high-card pair
+# idx 4: c5 GROUP BY CounterID HAVING COUNT>100
+# idx 5: h0 GROUP BY RegionID with DISTINCT UserID + aggs
+# idx 6: h1 GROUP BY CounterID with wide aggs
+# idx 7: h2 double COUNT(DISTINCT) with filter
+# idx 8: h3 GROUP BY UserID HAVING + ORDER
+# idx 9: h4 GROUP BY ClientIP with aggs
+HEAVY_QUERIES=(0 1 2 3 4 5 6 7 8 9)
+HEAVY_NAMES=("q4_count_distinct" "q15_groupby_userid" "q8_distinct_groupby" "q32_cartesian" "c5_heavy_agg" "h0_region_distinct" "h1_counter_wide" "h2_double_distinct" "h3_userid_sum" "h4_clientip_stats")
+# ~200MB budget forces partial spill for most (working sets 400-800MB)
+HEAVY_DISK_MEM=(200 200 200 200 200 200 200 200 200 200)
 HEAVY_MEM_HI=2048
 
 echo "  📊 B1: Heavy queries — Parquet vs Disk cache vs Memory cache..."
@@ -334,8 +356,8 @@ with open(report_path, "w") as f:
     f.write("**Setup:** Heavy q4 (COUNT DISTINCT over 17M UserIDs) runs in background, saturating CPU.\n")
     f.write("Light query runs in foreground in three modes.\n\n")
 
-    light_names = ["c0_range_filter", "q1_advengine"]
-    light_disk_mem = [144, 54]
+    light_names = ["c0_range_filter", "c1_multi_numeric", "c3_group_filter", "c4_date_range", "c7_wide_scan", "q1_advengine", "q7_group_advengine", "q40_multi_pred", "q41_hash_eq", "q42_time_bucket"]
+    light_disk_mem = [144, 2, 144, 200, 153, 72, 72, 10, 10, 5]
 
     for i, name in enumerate(light_names):
         disk_mem = light_disk_mem[i]
@@ -431,8 +453,8 @@ with open(report_path, "w") as f:
     f.write("**Hypothesis:** A heavy query (e.g., COUNT DISTINCT) reads all rows. If columns are pre-cached on disk,\n")
     f.write("it skips Parquet decode → frees CPU cycles for hash table operations → finishes faster.\n\n")
 
-    heavy_names = ["q4_count_distinct", "q8_distinct_groupby"]
-    heavy_disk_mem = [200, 200]
+    heavy_names = ["q4_count_distinct", "q15_groupby_userid", "q8_distinct_groupby", "q32_cartesian", "c5_heavy_agg", "h0_region_distinct", "h1_counter_wide", "h2_double_distinct", "h3_userid_sum", "h4_clientip_stats"]
+    heavy_disk_mem = [200, 200, 200, 200, 200, 200, 200, 200, 200, 200]
 
     for i, name in enumerate(heavy_names):
         disk_mem = heavy_disk_mem[i]
@@ -543,7 +565,7 @@ print(f"✅ Report: {report_path}")
 print("\n" + "=" * 90)
 print("  DISK VS PARQUET UNDER CONTENTION — SUMMARY")
 print("=" * 90)
-for name in ["c0_range_filter", "q1_advengine"]:
+for name in light_names:
     pq_bl = load_json(f"{output_dir}/a1_{name}_parquet.json")
     dk_bl = load_json(f"{output_dir}/a1_{name}_disk.json")
     pq_c = load_json(f"{output_dir}/a2_{name}_parquet.json")
