@@ -298,59 +298,98 @@ done
 echo ""
 
 # ============================================================
-# EXPERIMENT C: Throughput measurement
-# Run 4 parallel copies of a query mix, measure total wall time
-# This directly answers: does disk cache improve queries/second?
+# EXPERIMENT C: Throughput measurement — ALL queries
+# Run 4 parallel copies of each query, measure total wall time
 # ============================================================
 echo "═══════════════════════════════════════════════════════════"
-echo "  ⚡ EXPERIMENT C: Throughput (4 parallel query streams)"
+echo "  ⚡ EXPERIMENT C: Throughput (4 parallel streams, all queries)"
 echo "═══════════════════════════════════════════════════════════"
 echo ""
-echo "  4 parallel copies of q1 (full scan numeric filter)"
-echo "  Measures total wall time → queries/second"
-echo ""
 
-THROUGHPUT_QUERY=7  # q1 in light manifest
 THROUGHPUT_COPIES=4
 THROUGHPUT_ITERS=5
 
-for mode in parquet disk mem; do
-    if [ "$mode" = "parquet" ]; then
-        MODE_ARGS="--bench-mode parquet"
-        LABEL="Parquet (full decode each copy)"
-    elif [ "$mode" = "disk" ]; then
-        MODE_ARGS="--bench-mode liquid --max-memory-mb 72"
-        LABEL="Disk cache 72MB"
-    else
-        MODE_ARGS="--bench-mode liquid --max-memory-mb $LIGHT_MEM_HI"
-        LABEL="Memory cache ${LIGHT_MEM_HI}MB"
-    fi
+# Light queries throughput
+echo "  📊 C1: Light queries..."
+for i in "${!LIGHT_QUERIES[@]}"; do
+    qi=${LIGHT_QUERIES[$i]}
+    name=${LIGHT_NAMES[$i]}
+    disk_mem=${LIGHT_DISK_MEM[$i]}
 
-    echo -n "  🔸 $LABEL..."
-    sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches' 2>/dev/null || true
-    START_NS=$(date +%s%N)
+    for mode in parquet disk mem; do
+        if [ "$mode" = "parquet" ]; then
+            MODE_ARGS="--bench-mode parquet"
+        elif [ "$mode" = "disk" ]; then
+            MODE_ARGS="--bench-mode liquid --max-memory-mb $disk_mem"
+        else
+            MODE_ARGS="--bench-mode liquid --max-memory-mb $LIGHT_MEM_HI"
+        fi
 
-    PIDS=()
-    for c in $(seq 1 $THROUGHPUT_COPIES); do
-        target/release/in_process \
-            --manifest "$LIGHT_MANIFEST" \
-            $MODE_ARGS \
-            --iteration $THROUGHPUT_ITERS \
-            --query-index $THROUGHPUT_QUERY \
-            --perf-events \
-            --output "$OUTPUT_DIR/c_${mode}_copy${c}.json" > "$OUTPUT_DIR/c_${mode}_copy${c}.log" 2>&1 &
-        PIDS+=($!)
+        echo -n "    🔹 $name ($mode)..."
+        START_NS=$(date +%s%N)
+
+        PIDS=()
+        for c in $(seq 1 $THROUGHPUT_COPIES); do
+            target/release/in_process \
+                --manifest "$LIGHT_MANIFEST" \
+                $MODE_ARGS \
+                --iteration $THROUGHPUT_ITERS \
+                --query-index $qi \
+                --output "$OUTPUT_DIR/c_light_${name}_${mode}_copy${c}.json" > "$OUTPUT_DIR/c_light_${name}_${mode}_copy${c}.log" 2>&1 &
+            PIDS+=($!)
+        done
+
+        for pid in "${PIDS[@]}"; do
+            wait $pid 2>/dev/null || true
+        done
+
+        END_NS=$(date +%s%N)
+        ELAPSED_MS=$(( (END_NS - START_NS) / 1000000 ))
+        echo " ✅ ${ELAPSED_MS}ms"
+        echo "${ELAPSED_MS}" > "$OUTPUT_DIR/c_light_${name}_${mode}_total_ms.txt"
     done
+done
+echo ""
 
-    for pid in "${PIDS[@]}"; do
-        wait $pid 2>/dev/null || true
+# Heavy queries throughput
+echo "  📊 C2: Heavy queries..."
+for i in "${!HEAVY_QUERIES[@]}"; do
+    qi=${HEAVY_QUERIES[$i]}
+    name=${HEAVY_NAMES[$i]}
+    disk_mem=${HEAVY_DISK_MEM[$i]}
+
+    for mode in parquet disk mem; do
+        if [ "$mode" = "parquet" ]; then
+            MODE_ARGS="--bench-mode parquet"
+        elif [ "$mode" = "disk" ]; then
+            MODE_ARGS="--bench-mode liquid --max-memory-mb $disk_mem"
+        else
+            MODE_ARGS="--bench-mode liquid --max-memory-mb $HEAVY_MEM_HI"
+        fi
+
+        echo -n "    🔹 $name ($mode)..."
+        START_NS=$(date +%s%N)
+
+        PIDS=()
+        for c in $(seq 1 $THROUGHPUT_COPIES); do
+            target/release/in_process \
+                --manifest "$HEAVY_MANIFEST" \
+                $MODE_ARGS \
+                --iteration $THROUGHPUT_ITERS \
+                --query-index $qi \
+                --output "$OUTPUT_DIR/c_heavy_${name}_${mode}_copy${c}.json" > "$OUTPUT_DIR/c_heavy_${name}_${mode}_copy${c}.log" 2>&1 &
+            PIDS+=($!)
+        done
+
+        for pid in "${PIDS[@]}"; do
+            wait $pid 2>/dev/null || true
+        done
+
+        END_NS=$(date +%s%N)
+        ELAPSED_MS=$(( (END_NS - START_NS) / 1000000 ))
+        echo " ✅ ${ELAPSED_MS}ms"
+        echo "${ELAPSED_MS}" > "$OUTPUT_DIR/c_heavy_${name}_${mode}_total_ms.txt"
     done
-
-    END_NS=$(date +%s%N)
-    ELAPSED_MS=$(( (END_NS - START_NS) / 1000000 ))
-    TOTAL_QUERIES=$(( THROUGHPUT_COPIES * THROUGHPUT_ITERS ))
-    echo " ✅ ${ELAPSED_MS}ms total, ${TOTAL_QUERIES} queries"
-    echo "${ELAPSED_MS}" > "$OUTPUT_DIR/c_${mode}_total_ms.txt"
 done
 echo ""
 
