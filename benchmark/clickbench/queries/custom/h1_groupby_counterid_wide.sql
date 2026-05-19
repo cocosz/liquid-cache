@@ -1,1 +1,1 @@
-SELECT "CounterID", COUNT(*), SUM("ResolutionWidth"), AVG("ClientIP"), MIN("UserID"), MAX("UserID") FROM hits GROUP BY "CounterID" ORDER BY COUNT(*) DESC LIMIT 100;
+SELECT "CounterID", COUNT(*), SUM("ResolutionWidth"), AVG("ClientIP"), MIN("UserID"), MAX("UserID") FROM hits WHERE "IsRefresh" = 0 AND "DontCountHits" = 0 GROUP BY "CounterID" ORDER BY COUNT(*) DESC LIMIT 100;

@@ -189,21 +189,21 @@ echo "  If heavy query data is pre-cached on disk, it skips decode"
 echo "  → frees CPU cycles for hash table work → finishes faster"
 echo ""
 
-# Heavy queries to test (from heavy manifest — all 10)
-# idx 0: c5 GROUP BY CounterID WHERE IsRefresh=0 HAVING COUNT>100
-# idx 1: h2 double COUNT(DISTINCT) WHERE AdvEngineID > 0
-# idx 2: h5 GROUP BY UserID WHERE IsRefresh=0
-# idx 3: h6 COUNT(DISTINCT UserID, RegionID) WHERE CounterID>0 AND RegionID>100
-# idx 4: h7 GROUP BY ClientIP WHERE AdvEngineID>0 AND IsRefresh=0
-# idx 5: h8 GROUP BY RegionID, CounterID WHERE DontCountHits=0
-# idx 6: h9 GROUP BY UserID WHERE ResolutionWidth>0
-# idx 7: h10 double COUNT(DISTINCT) WHERE IsRefresh=0 AND DontCountHits=0
-# idx 8: h11 GROUP BY WatchID WHERE CounterID>100
-# idx 9: h12 GROUP BY ClientIP, RegionID WHERE IsRefresh=0 AND DontCountHits=0
-HEAVY_QUERIES=(0 1 2 3 4 5 6 7 8 9)
-HEAVY_NAMES=("c5_heavy_agg" "h2_double_distinct" "h5_userid_filtered" "h6_distinct_multi_pred" "h7_clientip_filtered" "h8_region_counter" "h9_userid_resolution" "h10_distinct_wide_pred" "h11_watchid_filtered" "h12_clientip_region")
-# ~200MB budget forces partial spill for most (working sets 400-800MB)
-HEAVY_DISK_MEM=(200 200 200 200 200 200 200 200 200 200)
+# Heavy queries to test (from heavy manifest — all 11, every one has a WHERE clause)
+# idx 0: c5 WHERE IsRefresh=0 GROUP BY CounterID HAVING COUNT>100
+# idx 1: h0 WHERE IsRefresh=0 GROUP BY RegionID + COUNT(DISTINCT UserID)
+# idx 2: h1 WHERE IsRefresh=0 AND DontCountHits=0 GROUP BY CounterID (wide)
+# idx 3: h2 WHERE AdvEngineID>0 COUNT(DISTINCT UserID, CounterID)
+# idx 4: h3 WHERE IsRefresh=0 AND AdvEngineID>0 GROUP BY UserID
+# idx 5: h4 WHERE CounterID>0 AND AdvEngineID=0 GROUP BY ClientIP
+# idx 6: h5 WHERE IsRefresh=0 AND DontCountHits=0 COUNT(DISTINCT UserID)
+# idx 7: h6 WHERE AdvEngineID=0 AND IsRefresh=0 GROUP BY UserID
+# idx 8: h7 WHERE CounterID>0 AND IsRefresh=0 GROUP BY WatchID, ClientIP
+# idx 9: h8 WHERE date_range AND IsRefresh=0 GROUP BY RegionID
+# idx 10: h9 WHERE AdvEngineID>0 AND CounterID>100 GROUP BY CounterID DISTINCT
+HEAVY_QUERIES=(0 1 2 3 4 5 6 7 8 9 10)
+HEAVY_NAMES=("c5_heavy_agg" "h0_region_distinct" "h1_counter_wide" "h2_double_distinct" "h3_userid_sum" "h4_clientip_stats" "h5_userid_distinct" "h6_groupby_userid" "h7_watchid_filtered" "h8_region_agg" "h9_counter_distinct")
+HEAVY_DISK_MEM=(200 200 200 200 200 200 200 200 200 200 200)
 HEAVY_MEM_HI=2048
 
 echo "  📊 B1: Heavy queries — Parquet vs Disk cache vs Memory cache..."
@@ -594,8 +594,8 @@ with open(report_path, "w") as f:
     f.write("**Hypothesis:** A heavy query (e.g., COUNT DISTINCT) reads all rows. If columns are pre-cached on disk,\n")
     f.write("it skips Parquet decode → frees CPU cycles for hash table operations → finishes faster.\n\n")
 
-    heavy_names = ["c5_heavy_agg", "h2_double_distinct", "h5_userid_filtered", "h6_distinct_multi_pred", "h7_clientip_filtered", "h8_region_counter", "h9_userid_resolution", "h10_distinct_wide_pred", "h11_watchid_filtered", "h12_clientip_region"]
-    heavy_disk_mem = [200, 200, 200, 200, 200, 200, 200, 200, 200, 200]
+    heavy_names = ["c5_heavy_agg", "h0_region_distinct", "h1_counter_wide", "h2_double_distinct", "h3_userid_sum", "h4_clientip_stats", "h5_userid_distinct", "h6_groupby_userid", "h7_watchid_filtered", "h8_region_agg", "h9_counter_distinct"]
+    heavy_disk_mem = [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200]
 
     for i, name in enumerate(heavy_names):
         disk_mem = heavy_disk_mem[i]

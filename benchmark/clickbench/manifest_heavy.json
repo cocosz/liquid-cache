@@ -1,19 +1,20 @@
 {
 	"name": "NumericCache-Heavy",
-	"description": "Heavyweight queries: high-cardinality GROUP BY / DISTINCT on numeric columns with numeric WHERE predicates. CPU-intensive, all numeric, predicate columns will be cached.",
+	"description": "Heavyweight queries with numeric WHERE clauses. All have predicates that will be cached.",
 	"tables": {
 		"hits": "benchmark/clickbench/data/hits.parquet"
 	},
 	"queries": [
 		"benchmark/clickbench/queries/custom/c5_heavy_numeric_agg.sql",
+		"benchmark/clickbench/queries/custom/h0_distinct_regionid_userid.sql",
+		"benchmark/clickbench/queries/custom/h1_groupby_counterid_wide.sql",
 		"benchmark/clickbench/queries/custom/h2_double_distinct.sql",
-		"benchmark/clickbench/queries/custom/h5_groupby_userid_filtered.sql",
-		"benchmark/clickbench/queries/custom/h6_count_distinct_multi_pred.sql",
-		"benchmark/clickbench/queries/custom/h7_groupby_clientip_filtered.sql",
-		"benchmark/clickbench/queries/custom/h8_groupby_region_counter.sql",
-		"benchmark/clickbench/queries/custom/h9_groupby_userid_resolution.sql",
-		"benchmark/clickbench/queries/custom/h10_double_distinct_wide_pred.sql",
-		"benchmark/clickbench/queries/custom/h11_groupby_watchid_filtered.sql",
-		"benchmark/clickbench/queries/custom/h12_groupby_clientip_region.sql"
+		"benchmark/clickbench/queries/custom/h3_groupby_userid_sum.sql",
+		"benchmark/clickbench/queries/custom/h4_groupby_clientip_stats.sql",
+		"benchmark/clickbench/queries/custom/h5_userid_distinct_filtered.sql",
+		"benchmark/clickbench/queries/custom/h6_groupby_userid_filtered.sql",
+		"benchmark/clickbench/queries/custom/h7_groupby_watchid_filtered.sql",
+		"benchmark/clickbench/queries/custom/h8_region_agg_filtered.sql",
+		"benchmark/clickbench/queries/custom/h9_counter_distinct_filtered.sql"
 	]
 }

@@ -1,0 +1,1 @@
+SELECT "UserID", COUNT(*) FROM hits WHERE "AdvEngineID" = 0 AND "IsRefresh" = 0 GROUP BY "UserID" ORDER BY COUNT(*) DESC LIMIT 10;

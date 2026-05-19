@@ -1,0 +1,1 @@
+SELECT "RegionID", COUNT(*), AVG("ResolutionWidth"), SUM("AdvEngineID") FROM hits WHERE "EventDate"::INT::DATE >= '2013-07-01' AND "EventDate"::INT::DATE <= '2013-07-31' AND "IsRefresh" = 0 GROUP BY "RegionID" ORDER BY COUNT(*) DESC LIMIT 20;
