@@ -96,6 +96,7 @@ for i in "${!LIGHT_QUERIES[@]}"; do
         --query-index $qi \
         --perf-events \
         --explain-analyze \
+        --flamegraph-dir "$OUTPUT_DIR/flamegraphs/a1_${name}_parquet" \
         --output "$OUTPUT_DIR/a1_${name}_parquet.json" > "$OUTPUT_DIR/a1_${name}_parquet.log" 2>&1 && echo " ✅" || echo " ❌"
 
     echo -n "    🔹 $name — Disk ${disk_mem}MB..."
@@ -108,6 +109,7 @@ for i in "${!LIGHT_QUERIES[@]}"; do
         --query-index $qi \
         --perf-events \
         --explain-analyze \
+        --flamegraph-dir "$OUTPUT_DIR/flamegraphs/a1_${name}_disk" \
         --output "$OUTPUT_DIR/a1_${name}_disk.json" > "$OUTPUT_DIR/a1_${name}_disk.log" 2>&1 && echo " ✅" || echo " ❌"
 
     echo -n "    🔹 $name — Memory ${LIGHT_MEM_HI}MB..."
@@ -120,6 +122,7 @@ for i in "${!LIGHT_QUERIES[@]}"; do
         --query-index $qi \
         --perf-events \
         --explain-analyze \
+        --flamegraph-dir "$OUTPUT_DIR/flamegraphs/a1_${name}_mem" \
         --output "$OUTPUT_DIR/a1_${name}_mem.json" > "$OUTPUT_DIR/a1_${name}_mem.log" 2>&1 && echo " ✅" || echo " ❌"
 done
 echo ""
@@ -167,6 +170,7 @@ for i in "${!LIGHT_QUERIES[@]}"; do
             --query-index $qi \
             --perf-events \
             --explain-analyze \
+            --flamegraph-dir "$OUTPUT_DIR/flamegraphs/a2_${name}_${mode}" \
             --output "$OUTPUT_DIR/a2_${name}_${mode}.json" > "$OUTPUT_DIR/a2_${name}_${mode}.log" 2>&1 && echo " ✅" || echo " ❌"
 
         wait $HEAVY_PID 2>/dev/null || true
@@ -186,18 +190,18 @@ echo "  → frees CPU cycles for hash table work → finishes faster"
 echo ""
 
 # Heavy queries to test (from heavy manifest — all 10)
-# idx 0: q4 COUNT(DISTINCT UserID) — 17M distinct Int64
-# idx 1: q15 GROUP BY UserID ORDER BY COUNT — 17M groups
-# idx 2: q8 GROUP BY RegionID, COUNT(DISTINCT UserID)
-# idx 3: q32 GROUP BY WatchID, ClientIP — high-card pair
-# idx 4: c5 GROUP BY CounterID HAVING COUNT>100
-# idx 5: h0 GROUP BY RegionID with DISTINCT UserID + aggs
-# idx 6: h1 GROUP BY CounterID with wide aggs
-# idx 7: h2 double COUNT(DISTINCT) with filter
-# idx 8: h3 GROUP BY UserID HAVING + ORDER
-# idx 9: h4 GROUP BY ClientIP with aggs
+# idx 0: c5 GROUP BY CounterID WHERE IsRefresh=0 HAVING COUNT>100
+# idx 1: h2 double COUNT(DISTINCT) WHERE AdvEngineID > 0
+# idx 2: h5 GROUP BY UserID WHERE IsRefresh=0
+# idx 3: h6 COUNT(DISTINCT UserID, RegionID) WHERE CounterID>0 AND RegionID>100
+# idx 4: h7 GROUP BY ClientIP WHERE AdvEngineID>0 AND IsRefresh=0
+# idx 5: h8 GROUP BY RegionID, CounterID WHERE DontCountHits=0
+# idx 6: h9 GROUP BY UserID WHERE ResolutionWidth>0
+# idx 7: h10 double COUNT(DISTINCT) WHERE IsRefresh=0 AND DontCountHits=0
+# idx 8: h11 GROUP BY WatchID WHERE CounterID>100
+# idx 9: h12 GROUP BY ClientIP, RegionID WHERE IsRefresh=0 AND DontCountHits=0
 HEAVY_QUERIES=(0 1 2 3 4 5 6 7 8 9)
-HEAVY_NAMES=("q4_count_distinct" "q15_groupby_userid" "q8_distinct_groupby" "q32_cartesian" "c5_heavy_agg" "h0_region_distinct" "h1_counter_wide" "h2_double_distinct" "h3_userid_sum" "h4_clientip_stats")
+HEAVY_NAMES=("c5_heavy_agg" "h2_double_distinct" "h5_userid_filtered" "h6_distinct_multi_pred" "h7_clientip_filtered" "h8_region_counter" "h9_userid_resolution" "h10_distinct_wide_pred" "h11_watchid_filtered" "h12_clientip_region")
 # ~200MB budget forces partial spill for most (working sets 400-800MB)
 HEAVY_DISK_MEM=(200 200 200 200 200 200 200 200 200 200)
 HEAVY_MEM_HI=2048
@@ -217,6 +221,7 @@ for i in "${!HEAVY_QUERIES[@]}"; do
         --query-index $qi \
         --perf-events \
         --explain-analyze \
+        --flamegraph-dir "$OUTPUT_DIR/flamegraphs/b1_${name}_parquet" \
         --output "$OUTPUT_DIR/b1_${name}_parquet.json" > "$OUTPUT_DIR/b1_${name}_parquet.log" 2>&1 && echo " ✅" || echo " ❌"
 
     echo -n "    🔹 $name — Disk ${disk_mem}MB..."
@@ -229,6 +234,7 @@ for i in "${!HEAVY_QUERIES[@]}"; do
         --query-index $qi \
         --perf-events \
         --explain-analyze \
+        --flamegraph-dir "$OUTPUT_DIR/flamegraphs/b1_${name}_disk" \
         --output "$OUTPUT_DIR/b1_${name}_disk.json" > "$OUTPUT_DIR/b1_${name}_disk.log" 2>&1 && echo " ✅" || echo " ❌"
 
     echo -n "    🔹 $name — Memory ${HEAVY_MEM_HI}MB..."
@@ -241,6 +247,7 @@ for i in "${!HEAVY_QUERIES[@]}"; do
         --query-index $qi \
         --perf-events \
         --explain-analyze \
+        --flamegraph-dir "$OUTPUT_DIR/flamegraphs/b1_${name}_mem" \
         --output "$OUTPUT_DIR/b1_${name}_mem.json" > "$OUTPUT_DIR/b1_${name}_mem.log" 2>&1 && echo " ✅" || echo " ❌"
 done
 echo ""
@@ -290,6 +297,7 @@ for i in "${!HEAVY_QUERIES[@]}"; do
             --query-index $qi \
             --perf-events \
             --explain-analyze \
+            --flamegraph-dir "$OUTPUT_DIR/flamegraphs/b2_${name}_${mode}" \
             --output "$OUTPUT_DIR/b2_${name}_${mode}.json" > "$OUTPUT_DIR/b2_${name}_${mode}.log" 2>&1 && echo " ✅" || echo " ❌"
 
         wait $BG_PID 2>/dev/null || true
@@ -586,7 +594,7 @@ with open(report_path, "w") as f:
     f.write("**Hypothesis:** A heavy query (e.g., COUNT DISTINCT) reads all rows. If columns are pre-cached on disk,\n")
     f.write("it skips Parquet decode → frees CPU cycles for hash table operations → finishes faster.\n\n")
 
-    heavy_names = ["q4_count_distinct", "q15_groupby_userid", "q8_distinct_groupby", "q32_cartesian", "c5_heavy_agg", "h0_region_distinct", "h1_counter_wide", "h2_double_distinct", "h3_userid_sum", "h4_clientip_stats"]
+    heavy_names = ["c5_heavy_agg", "h2_double_distinct", "h5_userid_filtered", "h6_distinct_multi_pred", "h7_clientip_filtered", "h8_region_counter", "h9_userid_resolution", "h10_distinct_wide_pred", "h11_watchid_filtered", "h12_clientip_region"]
     heavy_disk_mem = [200, 200, 200, 200, 200, 200, 200, 200, 200, 200]
 
     for i, name in enumerate(heavy_names):

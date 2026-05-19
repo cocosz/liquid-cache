@@ -1,0 +1,1 @@
+SELECT "ClientIP", "RegionID", COUNT(*), SUM("AdvEngineID"), AVG("ResolutionWidth") FROM hits WHERE "IsRefresh" = 0 AND "DontCountHits" = 0 GROUP BY "ClientIP", "RegionID" ORDER BY COUNT(*) DESC LIMIT 100;

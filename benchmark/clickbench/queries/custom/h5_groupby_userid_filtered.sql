@@ -1,0 +1,1 @@
+SELECT "UserID", COUNT(*), SUM("AdvEngineID") FROM hits WHERE "IsRefresh" = 0 GROUP BY "UserID" HAVING COUNT(*) > 5 ORDER BY COUNT(*) DESC LIMIT 20;

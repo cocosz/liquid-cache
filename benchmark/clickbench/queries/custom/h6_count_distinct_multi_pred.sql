@@ -1,0 +1,1 @@
+SELECT COUNT(DISTINCT "UserID"), COUNT(DISTINCT "RegionID") FROM hits WHERE "CounterID" > 0 AND "RegionID" > 100;
