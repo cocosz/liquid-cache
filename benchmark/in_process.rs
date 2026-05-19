@@ -73,6 +73,12 @@ struct InProcessBenchmark {
     /// Cache eviction policy: s3fifo (default) or lru
     #[arg(long = "cache-policy", default_value = "s3fifo")]
     pub cache_policy: String,
+
+    /// Run a sequence of queries against the same cache (comma-separated indices).
+    /// Example: --query-sequence 19,19,19,7,19,19,19,7
+    /// This runs the queries in order, sharing one cache instance across all of them.
+    #[arg(long = "query-sequence")]
+    pub query_sequence: Option<String>,
 }
 
 impl InProcessBenchmark {
@@ -93,7 +99,16 @@ impl InProcessBenchmark {
             .with_output_dir(self.output_dir.clone())
             .with_explain_analyze(self.explain_analyze)
             .with_cache_policy(&self.cache_policy);
-        runner.run(manifest, self, output).await?;
+
+        if let Some(ref seq) = self.query_sequence {
+            let sequence: Vec<usize> = seq
+                .split(',')
+                .map(|s| s.trim().parse::<usize>().expect("Invalid query index in sequence"))
+                .collect();
+            runner.run_sequence(manifest, self, output, &sequence).await?;
+        } else {
+            runner.run(manifest, self, output).await?;
+        }
         Ok(())
     }
 }

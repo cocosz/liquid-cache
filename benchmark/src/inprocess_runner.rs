@@ -720,4 +720,54 @@ impl InProcessBenchmarkRunner {
 
         Ok(benchmark_result)
     }
+
+    /// Run a sequence of queries against the same cache, one iteration each.
+    /// Each step in the sequence is recorded as a separate QueryResult with one iteration.
+    pub async fn run_sequence<T: Serialize + Clone>(
+        &self,
+        manifest: BenchmarkManifest,
+        benchmark_args: T,
+        output_path: Option<PathBuf>,
+        sequence: &[usize],
+    ) -> Result<BenchmarkResult<T>> {
+        info!("Running sequence benchmark: {} ({} steps)", manifest.name, sequence.len());
+
+        let (ctx, cache) = self.setup_context(&manifest).await?;
+        let queries = manifest.load_queries(0);
+
+        let mut benchmark_result = BenchmarkResult {
+            args: benchmark_args,
+            results: Vec::new(),
+        };
+
+        let bench_start_time = Instant::now();
+
+        for (step, &query_index) in sequence.iter().enumerate() {
+            if query_index >= queries.len() {
+                return Err(anyhow::anyhow!(
+                    "Query index {} out of range (max: {})",
+                    query_index,
+                    queries.len() - 1
+                ));
+            }
+            let query = &queries[query_index];
+            let mut query_result = QueryResult::new(query.clone());
+
+            info!("Sequence step {}/{}: Q{}", step + 1, sequence.len(), query.id());
+
+            let iteration_result = self
+                .run_single_iteration(&ctx, query, bench_start_time, cache.clone(), step as u32)
+                .await?;
+
+            query_result.add(iteration_result);
+            benchmark_result.results.push(query_result);
+        }
+
+        if let Some(output_path) = &output_path {
+            let output_file = File::create(output_path)?;
+            serde_json::to_writer_pretty(output_file, &benchmark_result)?;
+        }
+
+        Ok(benchmark_result)
+    }
 }

@@ -1,0 +1,11 @@
+{
+  "name": "ClickBench Skewed Access (LRU vs FIFO)",
+  "description": "Two queries on the same columns (EventDate, CounterID) but different date ranges hitting different row groups. Query 0 (hot) runs 3x more than Query 1 (cold).",
+  "tables": {
+    "hits": "benchmark/clickbench/data/hits.parquet"
+  },
+  "queries": [
+    "benchmark/clickbench/queries/custom/seq_hot.sql",
+    "benchmark/clickbench/queries/custom/seq_cold.sql"
+  ]
+}
