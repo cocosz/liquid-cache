@@ -44,13 +44,33 @@ for Q in $QUERIES; do
 done
 echo ""
 
-# Run each query at each memory config with LRU policy
+# Run each query at each memory config with LRU policy — both liquid (hydration) and arrow (no hydration)
 for Q in $QUERIES; do
-    echo "🚀 Q${Q}: running across memory configs (LRU)..."
+    echo "🚀 Q${Q}: LRU + hydration..."
     for MEM in $MEMORY_CONFIGS; do
         echo -n "  💾 ${MEM}MB..."
-        FLAMEGRAPH_DIR="$OUTPUT_DIR/flamegraphs/q${Q}_${MEM}mb"
-        mkdir -p "$FLAMEGRAPH_DIR"
+        mkdir -p "$OUTPUT_DIR/flamegraphs/q${Q}_${MEM}mb_lru_hydrate"
+        if timeout 600 target/release/in_process \
+            --manifest benchmark/clickbench/manifest.json \
+            --bench-mode liquid-hydrate \
+            --max-memory-mb $MEM \
+            --query-index $Q \
+            --iteration $ITERATIONS \
+            --explain-analyze \
+            --cache-policy lru \
+            --flamegraph-dir "$OUTPUT_DIR/flamegraphs/q${Q}_${MEM}mb_lru_hydrate" \
+            --output "$OUTPUT_DIR/q${Q}_${MEM}mb_lru_hydrate.json" > "$OUTPUT_DIR/q${Q}_${MEM}mb_lru_hydrate.log" 2>&1; then
+            echo " ✅"
+        else
+            echo " ❌"
+        fi
+    done
+    echo ""
+
+    echo "🚀 Q${Q}: LRU + NO hydration..."
+    for MEM in $MEMORY_CONFIGS; do
+        echo -n "  💾 ${MEM}MB..."
+        mkdir -p "$OUTPUT_DIR/flamegraphs/q${Q}_${MEM}mb_lru_nohydrate"
         if timeout 600 target/release/in_process \
             --manifest benchmark/clickbench/manifest.json \
             --bench-mode liquid \
@@ -59,11 +79,53 @@ for Q in $QUERIES; do
             --iteration $ITERATIONS \
             --explain-analyze \
             --cache-policy lru \
-            --flamegraph-dir "$FLAMEGRAPH_DIR" \
-            --output "$OUTPUT_DIR/q${Q}_${MEM}mb.json" > "$OUTPUT_DIR/q${Q}_${MEM}mb_explain.log" 2>&1; then
+            --flamegraph-dir "$OUTPUT_DIR/flamegraphs/q${Q}_${MEM}mb_lru_nohydrate" \
+            --output "$OUTPUT_DIR/q${Q}_${MEM}mb_lru_nohydrate.json" > "$OUTPUT_DIR/q${Q}_${MEM}mb_lru_nohydrate.log" 2>&1; then
             echo " ✅"
         else
-            echo " ❌ FAILED/TIMEOUT"
+            echo " ❌"
+        fi
+    done
+    echo ""
+
+    echo "🚀 Q${Q}: S3-FIFO + hydration..."
+    for MEM in $MEMORY_CONFIGS; do
+        echo -n "  💾 ${MEM}MB..."
+        mkdir -p "$OUTPUT_DIR/flamegraphs/q${Q}_${MEM}mb_s3fifo_hydrate"
+        if timeout 600 target/release/in_process \
+            --manifest benchmark/clickbench/manifest.json \
+            --bench-mode liquid-hydrate \
+            --max-memory-mb $MEM \
+            --query-index $Q \
+            --iteration $ITERATIONS \
+            --explain-analyze \
+            --cache-policy s3fifo \
+            --flamegraph-dir "$OUTPUT_DIR/flamegraphs/q${Q}_${MEM}mb_s3fifo_hydrate" \
+            --output "$OUTPUT_DIR/q${Q}_${MEM}mb_s3fifo_hydrate.json" > "$OUTPUT_DIR/q${Q}_${MEM}mb_s3fifo_hydrate.log" 2>&1; then
+            echo " ✅"
+        else
+            echo " ❌"
+        fi
+    done
+    echo ""
+
+    echo "🚀 Q${Q}: S3-FIFO + NO hydration..."
+    for MEM in $MEMORY_CONFIGS; do
+        echo -n "  💾 ${MEM}MB..."
+        mkdir -p "$OUTPUT_DIR/flamegraphs/q${Q}_${MEM}mb_s3fifo_nohydrate"
+        if timeout 600 target/release/in_process \
+            --manifest benchmark/clickbench/manifest.json \
+            --bench-mode liquid \
+            --max-memory-mb $MEM \
+            --query-index $Q \
+            --iteration $ITERATIONS \
+            --explain-analyze \
+            --cache-policy s3fifo \
+            --flamegraph-dir "$OUTPUT_DIR/flamegraphs/q${Q}_${MEM}mb_s3fifo_nohydrate" \
+            --output "$OUTPUT_DIR/q${Q}_${MEM}mb_s3fifo_nohydrate.json" > "$OUTPUT_DIR/q${Q}_${MEM}mb_s3fifo_nohydrate.log" 2>&1; then
+            echo " ✅"
+        else
+            echo " ❌"
         fi
     done
     echo ""
@@ -116,42 +178,37 @@ def get_cpu_time(filepath):
     except:
         return 0
 
+modes = [
+    ("lru_hydrate", "LRU + Hydration"),
+    ("lru_nohydrate", "LRU + No Hydration"),
+    ("s3fifo_hydrate", "S3-FIFO + Hydration"),
+    ("s3fifo_nohydrate", "S3-FIFO + No Hydration"),
+]
+
 # Console summary
 print("=" * 100)
 print("  SWEET SPOT ANALYSIS (LRU Policy): Memory Budget vs Hot Query Latency")
 print("=" * 100)
 
-for q in queries:
-    baseline = get_hot_min(f"{output_dir}/q{q}_baseline.json")
-    baseline_str = f"{baseline}ms" if baseline else "N/A"
-    print(f"\n{'─'*100}")
-    print(f"  Q{q} (Pushdown baseline: {baseline_str})")
-    print(f"{'─'*100}")
-    print(f"  {'Budget':<10}{'Min hot':<10}{'Speedup':<10}{'Cache mem':<12}{'Disk':<10}{'IO reads':<10}{'Status'}")
-    print(f"  {'-'*70}")
+for mode_key, mode_label in modes:
+    print(f"\n{'═'*100}")
+    print(f"  Mode: {mode_label}")
+    print(f"{'═'*100}")
+    for q in queries:
+        baseline = get_hot_min(f"{output_dir}/q{q}_baseline.json")
+        baseline_str = f"{baseline}ms" if baseline else "N/A"
+        print(f"\n  Q{q} (Pushdown baseline: {baseline_str})")
+        print(f"  {'Budget':<10}{'Min hot':<10}{'Speedup':<10}{'Status'}")
+        print(f"  {'-'*40}")
 
-    for mem in memory_configs:
-        hot = get_hot_min(f"{output_dir}/q{q}_{mem}mb.json")
-        stats = get_cache_stats(f"{output_dir}/q{q}_{mem}mb.json")
-
-        if hot is None:
-            print(f"  {mem:<10}{'SKIP':<10}")
-            continue
-
-        speedup = baseline / hot if baseline and hot > 0 else 0
-        cache_mem = f"{stats['memory_usage_bytes']//(1024*1024)}MB" if stats else "?"
-        disk = f"{stats['disk_usage_bytes']//(1024*1024)}MB" if stats else "?"
-        rt = stats.get("runtime", {}) if stats else {}
-        io_r = rt.get("read_io_count", 0)
-
-        if io_r == 0 and speedup > 1.05:
-            status = "✅ GREEN"
-        elif io_r > 0:
-            status = "❌ RED (disk reads)"
-        else:
-            status = "➖"
-
-        print(f"  {mem:<10}{hot:<10}{speedup:<10.2f}{cache_mem:<12}{disk:<10}{io_r:<10}{status}")
+        for mem in memory_configs:
+            hot = get_hot_min(f"{output_dir}/q{q}_{mem}mb_{mode_key}.json")
+            if hot is None:
+                print(f"  {mem:<10}{'SKIP':<10}")
+                continue
+            speedup = baseline / hot if baseline and hot > 0 else 0
+            status = "✅" if speedup > 1.05 else "➖"
+            print(f"  {mem:<10}{hot:<10}{speedup:<10.2f}{status}")
 
 # Write markdown report
 report_path = f"{output_dir}/report.md"
