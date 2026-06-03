@@ -1,0 +1,42 @@
++----------+
+| count(*) |
++----------+
+| 477198   |
++----------+
+
+thread 'tokio-rt-worker' (1067767) panicked at src/core/src/liquid_array/ipc.rs:222:13:
+Invalid magic number
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'tokio-rt-worker' (1067746) panicked at src/core/src/liquid_array/raw/bit_pack_array.rs:301:13:
+Values buffer extends beyond input buffer
+
+thread 'tokio-rt-worker' (1067771) panicked at src/core/src/liquid_array/raw/bit_pack_array.rs:301:13:
+Values buffer extends beyond input buffer
+
+thread 'tokio-rt-worker' (1067805) panicked at src/core/src/liquid_array/ipc.rs:222:13:
+Invalid magic number
+
+thread 'tokio-rt-worker' (1067752) panicked at src/core/src/liquid_array/ipc.rs:222:13:
+Invalid magic number
+
+thread 'tokio-rt-worker' (1067760) panicked at src/core/src/liquid_array/ipc.rs:222:13:
+Invalid magic number
+
+thread 'tokio-rt-worker' (1067776) panicked at src/core/src/liquid_array/raw/bit_pack_array.rs:301:13:
+Values buffer extends beyond input buffer
+
+thread 'tokio-rt-worker' (1067792) panicked at src/core/src/liquid_array/ipc.rs:222:13:
+Invalid magic number
+
+thread 'tokio-rt-worker' (1067803) panicked at src/core/src/liquid_array/ipc.rs:222:13:
+Invalid magic number
+
+thread 'tokio-rt-worker' (1067789) panicked at src/core/src/liquid_array/ipc.rs:222:13:
+Invalid magic number
+
+thread 'tokio-rt-worker' (1067806) panicked at src/core/src/liquid_array/ipc.rs:222:13:
+Invalid magic number
+
+thread 'tokio-rt-worker' (1067774) panicked at src/core/src/liquid_array/raw/bit_pack_array.rs:301:13:
+Values buffer extends beyond input buffer

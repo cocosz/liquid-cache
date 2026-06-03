@@ -1,0 +1,106 @@
+{
+  "args": {
+    "manifest": "benchmark/clickbench/manifest_heavy.json",
+    "bench_mode": "Parquet",
+    "iteration": 5,
+    "output": "outputs/disk_vs_parquet_contention/c_heavy_h8_region_agg_parquet_copy3.json",
+    "output_dir": null,
+    "reset_cache": false,
+    "perf_events": false,
+    "partitions": null,
+    "max_memory_mb": null,
+    "flamegraph_dir": null,
+    "query_index": 9,
+    "cache_dir": null,
+    "jaeger_endpoint": null,
+    "explain_analyze": false,
+    "cache_policy": "s3fifo"
+  },
+  "results": [
+    {
+      "query": {
+        "id": 9,
+        "statement": [
+          "SELECT \"RegionID\", COUNT(*), AVG(\"ResolutionWidth\"), SUM(\"AdvEngineID\") FROM hits WHERE \"EventDate\"::INT::DATE >= '2013-07-01' AND \"EventDate\"::INT::DATE <= '2013-07-31' AND \"IsRefresh\" = 0 GROUP BY \"RegionID\" ORDER BY COUNT(*) DESC LIMIT 20"
+        ]
+      },
+      "iteration_results": [
+        {
+          "network_traffic": 0,
+          "time_millis": 1093,
+          "cache_cpu_time": 10092,
+          "cache_memory_usage": 105610552,
+          "liquid_cache_usage": 0,
+          "starting_timestamp": {
+            "secs": 0,
+            "nanos": 399970
+          },
+          "disk_bytes_read": 25194496,
+          "disk_bytes_written": 0,
+          "cache_stats": null,
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 935,
+          "cache_cpu_time": 7405,
+          "cache_memory_usage": 105610552,
+          "liquid_cache_usage": 0,
+          "starting_timestamp": {
+            "secs": 1,
+            "nanos": 95500449
+          },
+          "disk_bytes_read": 0,
+          "disk_bytes_written": 0,
+          "cache_stats": null,
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 1079,
+          "cache_cpu_time": 7932,
+          "cache_memory_usage": 105610552,
+          "liquid_cache_usage": 0,
+          "starting_timestamp": {
+            "secs": 2,
+            "nanos": 32409191
+          },
+          "disk_bytes_read": 0,
+          "disk_bytes_written": 0,
+          "cache_stats": null,
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 862,
+          "cache_cpu_time": 7797,
+          "cache_memory_usage": 105610552,
+          "liquid_cache_usage": 0,
+          "starting_timestamp": {
+            "secs": 3,
+            "nanos": 112584854
+          },
+          "disk_bytes_read": 0,
+          "disk_bytes_written": 0,
+          "cache_stats": null,
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 818,
+          "cache_cpu_time": 7146,
+          "cache_memory_usage": 105610552,
+          "liquid_cache_usage": 0,
+          "starting_timestamp": {
+            "secs": 3,
+            "nanos": 976774737
+          },
+          "disk_bytes_read": 0,
+          "disk_bytes_written": 0,
+          "cache_stats": null,
+          "perf_events": null
+        }
+      ]
+    }
+  ]
+}

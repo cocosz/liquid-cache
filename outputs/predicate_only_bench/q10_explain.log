@@ -1,0 +1,170 @@
+
+=== EXPLAIN ANALYZE (Query 10, Iteration 0) ===
+SortPreservingMergeExec: [u@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=5.72µs, output_bytes=193.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[u@1 DESC], preserve_partitioning=[true], filter=[u@1 IS NULL OR u@1 > 6], metrics=[output_rows=126, elapsed_compute=355.47µs, output_bytes=2.5 KB, output_batches=16, row_replacements=128]
+    ProjectionExec: expr=[MobilePhoneModel@0 as MobilePhoneModel, count(alias1)@1 as u], metrics=[output_rows=165, elapsed_compute=15.07µs, output_bytes=130.2 KB, output_batches=16, expr_0_eval_time=2.19µs, expr_1_eval_time=1.19µs]
+      AggregateExec: mode=FinalPartitioned, gby=[MobilePhoneModel@0 as MobilePhoneModel], aggr=[count(alias1)], metrics=[output_rows=165, elapsed_compute=1.39ms, output_bytes=130.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=317.0 K, aggregate_arguments_time=11.49µs, aggregation_time=12.96µs, emitting_time=20.12µs, time_calculating_group_ids=86.89µs]
+        RepartitionExec: partitioning=Hash([MobilePhoneModel@0], 16), input_partitions=16, metrics=[output_rows=1.53 K, elapsed_compute=337.74µs, output_bytes=1041.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=4.35s, repartition_time=513.70µs, send_time=161.47µs]
+          AggregateExec: mode=Partial, gby=[MobilePhoneModel@0 as MobilePhoneModel], aggr=[count(alias1)], metrics=[output_rows=1.53 K, elapsed_compute=22.01ms, output_bytes=157.0 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=2.26 M, aggregate_arguments_time=52.44µs, aggregation_time=2.06ms, emitting_time=42.22µs, time_calculating_group_ids=19.67ms, reduction_factor=0.13% (1.53 K/1.19 M)]
+            AggregateExec: mode=FinalPartitioned, gby=[MobilePhoneModel@0 as MobilePhoneModel, alias1@1 as alias1], aggr=[], metrics=[output_rows=1.19 M, elapsed_compute=184.49ms, output_bytes=320.0 MB, output_batches=160, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=129.0 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=26.84µs, time_calculating_group_ids=183.96ms]
+              RepartitionExec: partitioning=Hash([MobilePhoneModel@0, alias1@1], 16), input_partitions=16, metrics=[output_rows=1.37 M, elapsed_compute=7.94ms, output_bytes=21.7 MB, output_batches=176, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=3.32s, repartition_time=30.64ms, send_time=21.87ms]
+                AggregateExec: mode=Partial, gby=[MobilePhoneModel@1 as MobilePhoneModel, UserID@0 as alias1], aggr=[], metrics=[output_rows=1.37 M, elapsed_compute=445.48ms, output_bytes=373.0 MB, output_batches=177, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=63.04 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=68.33µs, time_calculating_group_ids=430.50ms, reduction_factor=25% (1.37 M/5.56 M)]
+                  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[UserID, MobilePhoneModel], file_type=liquid_parquet, metrics=[output_rows=5.56 M, elapsed_compute=16ns, output_bytes=86.2 MB, output_batches=12.20 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=274.9 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.05ms, metadata_load_time=155.78ms, page_index_eval_time=2.58µs, row_pushdown_eval_time=32ns, statistics_eval_time=349.69µs, time_elapsed_opening=170.73ms, time_elapsed_processing=2.39s, time_elapsed_scanning_total=3.15s, time_elapsed_scanning_until_data=172.20ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=795MB, disk=0MB
+  Hits: cache_hit=12201, eval_predicate=24436
+  Misses: cache_miss=12218
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 279ms
+
++------------------+---------+
+| MobilePhoneModel | u       |
++------------------+---------+
+| iPad             | 1090347 |
+| iPhone           | 45758   |
+| A500             | 16046   |
+| N8-00            | 5565    |
+| iPho             | 3300    |
+| ONE TOUCH 6030A  | 2759    |
+| GT-P7300B        | 1907    |
+| 3110000          | 1871    |
+| GT-I9500         | 1598    |
+| eagle75          | 1492    |
++------------------+---------+
+
+=== EXPLAIN ANALYZE (Query 10, Iteration 1) ===
+SortPreservingMergeExec: [u@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=5.67µs, output_bytes=193.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[u@1 DESC], preserve_partitioning=[true], filter=[u@1 IS NULL OR u@1 > 6], metrics=[output_rows=117, elapsed_compute=277.03µs, output_bytes=2.3 KB, output_batches=16, row_replacements=119]
+    ProjectionExec: expr=[MobilePhoneModel@0 as MobilePhoneModel, count(alias1)@1 as u], metrics=[output_rows=165, elapsed_compute=15.62µs, output_bytes=130.2 KB, output_batches=16, expr_0_eval_time=2.03µs, expr_1_eval_time=999ns]
+      AggregateExec: mode=FinalPartitioned, gby=[MobilePhoneModel@0 as MobilePhoneModel], aggr=[count(alias1)], metrics=[output_rows=165, elapsed_compute=199.43µs, output_bytes=130.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=317.0 K, aggregate_arguments_time=9.20µs, aggregation_time=11.96µs, emitting_time=20.82µs, time_calculating_group_ids=85.28µs]
+        RepartitionExec: partitioning=Hash([MobilePhoneModel@0], 16), input_partitions=16, metrics=[output_rows=1.53 K, elapsed_compute=330.81µs, output_bytes=1041.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=3.56s, repartition_time=534.39µs, send_time=169.27µs]
+          AggregateExec: mode=Partial, gby=[MobilePhoneModel@0 as MobilePhoneModel], aggr=[count(alias1)], metrics=[output_rows=1.53 K, elapsed_compute=22.53ms, output_bytes=155.5 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=2.26 M, aggregate_arguments_time=55.23µs, aggregation_time=2.09ms, emitting_time=36.59µs, time_calculating_group_ids=20.12ms, reduction_factor=0.13% (1.53 K/1.19 M)]
+            AggregateExec: mode=FinalPartitioned, gby=[MobilePhoneModel@0 as MobilePhoneModel, alias1@1 as alias1], aggr=[], metrics=[output_rows=1.19 M, elapsed_compute=159.49ms, output_bytes=320.0 MB, output_batches=160, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=129.0 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=25.72µs, time_calculating_group_ids=158.99ms]
+              RepartitionExec: partitioning=Hash([MobilePhoneModel@0, alias1@1], 16), input_partitions=16, metrics=[output_rows=1.37 M, elapsed_compute=6.94ms, output_bytes=21.7 MB, output_batches=176, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=2.59s, repartition_time=31.52ms, send_time=22.25ms]
+                AggregateExec: mode=Partial, gby=[MobilePhoneModel@1 as MobilePhoneModel, UserID@0 as alias1], aggr=[], metrics=[output_rows=1.37 M, elapsed_compute=354.57ms, output_bytes=373.0 MB, output_batches=177, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=63.04 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=42.69µs, time_calculating_group_ids=342.44ms, reduction_factor=25% (1.37 M/5.56 M)]
+                  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[UserID, MobilePhoneModel], file_type=liquid_parquet, metrics=[output_rows=5.56 M, elapsed_compute=16ns, output_bytes=86.2 MB, output_batches=12.20 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=287.3 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.22ms, metadata_load_time=1.97ms, page_index_eval_time=2.74µs, row_pushdown_eval_time=32ns, statistics_eval_time=364.79µs, time_elapsed_opening=6.28ms, time_elapsed_processing=2.01s, time_elapsed_scanning_total=2.58s, time_elapsed_scanning_until_data=41.87ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=795MB, disk=0MB
+  Hits: cache_hit=12201, eval_predicate=12218
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 226ms
+
++------------------+---------+
+| MobilePhoneModel | u       |
++------------------+---------+
+| iPad             | 1090347 |
+| iPhone           | 45758   |
+| A500             | 16046   |
+| N8-00            | 5565    |
+| iPho             | 3300    |
+| ONE TOUCH 6030A  | 2759    |
+| GT-P7300B        | 1907    |
+| 3110000          | 1871    |
+| GT-I9500         | 1598    |
+| eagle75          | 1492    |
++------------------+---------+
+
+=== EXPLAIN ANALYZE (Query 10, Iteration 2) ===
+SortPreservingMergeExec: [u@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=5.27µs, output_bytes=193.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[u@1 DESC], preserve_partitioning=[true], filter=[u@1 IS NULL OR u@1 > 6], metrics=[output_rows=116, elapsed_compute=349.25µs, output_bytes=2.3 KB, output_batches=16, row_replacements=119]
+    ProjectionExec: expr=[MobilePhoneModel@0 as MobilePhoneModel, count(alias1)@1 as u], metrics=[output_rows=165, elapsed_compute=15.00µs, output_bytes=130.2 KB, output_batches=16, expr_0_eval_time=1.93µs, expr_1_eval_time=1.07µs]
+      AggregateExec: mode=FinalPartitioned, gby=[MobilePhoneModel@0 as MobilePhoneModel], aggr=[count(alias1)], metrics=[output_rows=165, elapsed_compute=217.75µs, output_bytes=130.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=317.0 K, aggregate_arguments_time=8.36µs, aggregation_time=37.78µs, emitting_time=20.11µs, time_calculating_group_ids=80.32µs]
+        RepartitionExec: partitioning=Hash([MobilePhoneModel@0], 16), input_partitions=16, metrics=[output_rows=1.53 K, elapsed_compute=334.47µs, output_bytes=1041.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=3.51s, repartition_time=509.78µs, send_time=140.81µs]
+          AggregateExec: mode=Partial, gby=[MobilePhoneModel@0 as MobilePhoneModel], aggr=[count(alias1)], metrics=[output_rows=1.53 K, elapsed_compute=21.03ms, output_bytes=153.4 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=2.26 M, aggregate_arguments_time=54.13µs, aggregation_time=2.07ms, emitting_time=35.91µs, time_calculating_group_ids=18.67ms, reduction_factor=0.13% (1.53 K/1.19 M)]
+            AggregateExec: mode=FinalPartitioned, gby=[MobilePhoneModel@0 as MobilePhoneModel, alias1@1 as alias1], aggr=[], metrics=[output_rows=1.19 M, elapsed_compute=145.32ms, output_bytes=320.0 MB, output_batches=160, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=129.0 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=26.57µs, time_calculating_group_ids=144.84ms]
+              RepartitionExec: partitioning=Hash([MobilePhoneModel@0, alias1@1], 16), input_partitions=16, metrics=[output_rows=1.37 M, elapsed_compute=6.65ms, output_bytes=21.7 MB, output_batches=176, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=2.56s, repartition_time=29.67ms, send_time=17.35ms]
+                AggregateExec: mode=Partial, gby=[MobilePhoneModel@1 as MobilePhoneModel, UserID@0 as alias1], aggr=[], metrics=[output_rows=1.37 M, elapsed_compute=346.61ms, output_bytes=373.0 MB, output_batches=177, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=63.04 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=43.77µs, time_calculating_group_ids=334.32ms, reduction_factor=25% (1.37 M/5.56 M)]
+                  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[UserID, MobilePhoneModel], file_type=liquid_parquet, metrics=[output_rows=5.56 M, elapsed_compute=16ns, output_bytes=86.2 MB, output_batches=12.20 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=287.3 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.52ms, metadata_load_time=2.39ms, page_index_eval_time=2.88µs, row_pushdown_eval_time=32ns, statistics_eval_time=442.52µs, time_elapsed_opening=8.38ms, time_elapsed_processing=2.01s, time_elapsed_scanning_total=2.55s, time_elapsed_scanning_until_data=43.28ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=795MB, disk=0MB
+  Hits: cache_hit=12201, eval_predicate=12218
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 223ms
+
++------------------+---------+
+| MobilePhoneModel | u       |
++------------------+---------+
+| iPad             | 1090347 |
+| iPhone           | 45758   |
+| A500             | 16046   |
+| N8-00            | 5565    |
+| iPho             | 3300    |
+| ONE TOUCH 6030A  | 2759    |
+| GT-P7300B        | 1907    |
+| 3110000          | 1871    |
+| GT-I9500         | 1598    |
+| eagle75          | 1492    |
++------------------+---------+
+
+=== EXPLAIN ANALYZE (Query 10, Iteration 3) ===
+SortPreservingMergeExec: [u@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=5.62µs, output_bytes=193.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[u@1 DESC], preserve_partitioning=[true], filter=[u@1 IS NULL OR u@1 > 6], metrics=[output_rows=120, elapsed_compute=311.32µs, output_bytes=2.4 KB, output_batches=16, row_replacements=122]
+    ProjectionExec: expr=[MobilePhoneModel@0 as MobilePhoneModel, count(alias1)@1 as u], metrics=[output_rows=165, elapsed_compute=16.15µs, output_bytes=130.2 KB, output_batches=16, expr_0_eval_time=2.14µs, expr_1_eval_time=1.14µs]
+      AggregateExec: mode=FinalPartitioned, gby=[MobilePhoneModel@0 as MobilePhoneModel], aggr=[count(alias1)], metrics=[output_rows=165, elapsed_compute=209.69µs, output_bytes=130.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=317.0 K, aggregate_arguments_time=8.73µs, aggregation_time=12.45µs, emitting_time=20.24µs, time_calculating_group_ids=88.05µs]
+        RepartitionExec: partitioning=Hash([MobilePhoneModel@0], 16), input_partitions=16, metrics=[output_rows=1.53 K, elapsed_compute=307.23µs, output_bytes=1041.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=3.35s, repartition_time=438.75µs, send_time=285.29µs]
+          AggregateExec: mode=Partial, gby=[MobilePhoneModel@0 as MobilePhoneModel], aggr=[count(alias1)], metrics=[output_rows=1.53 K, elapsed_compute=22.96ms, output_bytes=154.4 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=2.26 M, aggregate_arguments_time=55.88µs, aggregation_time=2.13ms, emitting_time=43.98µs, time_calculating_group_ids=20.53ms, reduction_factor=0.13% (1.53 K/1.19 M)]
+            AggregateExec: mode=FinalPartitioned, gby=[MobilePhoneModel@0 as MobilePhoneModel, alias1@1 as alias1], aggr=[], metrics=[output_rows=1.19 M, elapsed_compute=153.81ms, output_bytes=320.0 MB, output_batches=160, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=129.0 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=27.97µs, time_calculating_group_ids=153.36ms]
+              RepartitionExec: partitioning=Hash([MobilePhoneModel@0, alias1@1], 16), input_partitions=16, metrics=[output_rows=1.37 M, elapsed_compute=6.68ms, output_bytes=21.7 MB, output_batches=176, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=2.57s, repartition_time=29.25ms, send_time=20.80ms]
+                AggregateExec: mode=Partial, gby=[MobilePhoneModel@1 as MobilePhoneModel, UserID@0 as alias1], aggr=[], metrics=[output_rows=1.37 M, elapsed_compute=344.10ms, output_bytes=373.0 MB, output_batches=177, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=63.04 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=39.67µs, time_calculating_group_ids=332.24ms, reduction_factor=25% (1.37 M/5.56 M)]
+                  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[UserID, MobilePhoneModel], file_type=liquid_parquet, metrics=[output_rows=5.56 M, elapsed_compute=16ns, output_bytes=86.2 MB, output_batches=12.20 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=287.3 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.28ms, metadata_load_time=2.29ms, page_index_eval_time=2.54µs, row_pushdown_eval_time=32ns, statistics_eval_time=358.01µs, time_elapsed_opening=7.91ms, time_elapsed_processing=1.98s, time_elapsed_scanning_total=2.57s, time_elapsed_scanning_until_data=44.47ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=795MB, disk=0MB
+  Hits: cache_hit=12201, eval_predicate=12218
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 213ms
+
++------------------+---------+
+| MobilePhoneModel | u       |
++------------------+---------+
+| iPad             | 1090347 |
+| iPhone           | 45758   |
+| A500             | 16046   |
+| N8-00            | 5565    |
+| iPho             | 3300    |
+| ONE TOUCH 6030A  | 2759    |
+| GT-P7300B        | 1907    |
+| 3110000          | 1871    |
+| GT-I9500         | 1598    |
+| eagle75          | 1492    |
++------------------+---------+
+
+=== EXPLAIN ANALYZE (Query 10, Iteration 4) ===
+SortPreservingMergeExec: [u@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=10.42µs, output_bytes=193.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[u@1 DESC], preserve_partitioning=[true], filter=[u@1 IS NULL OR u@1 > 6], metrics=[output_rows=111, elapsed_compute=312.86µs, output_bytes=2.2 KB, output_batches=16, row_replacements=112]
+    ProjectionExec: expr=[MobilePhoneModel@0 as MobilePhoneModel, count(alias1)@1 as u], metrics=[output_rows=165, elapsed_compute=16.26µs, output_bytes=130.2 KB, output_batches=16, expr_0_eval_time=2.21µs, expr_1_eval_time=1.15µs]
+      AggregateExec: mode=FinalPartitioned, gby=[MobilePhoneModel@0 as MobilePhoneModel], aggr=[count(alias1)], metrics=[output_rows=165, elapsed_compute=203.90µs, output_bytes=130.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=317.0 K, aggregate_arguments_time=11.52µs, aggregation_time=11.78µs, emitting_time=19.58µs, time_calculating_group_ids=87.05µs]
+        RepartitionExec: partitioning=Hash([MobilePhoneModel@0], 16), input_partitions=16, metrics=[output_rows=1.53 K, elapsed_compute=342.08µs, output_bytes=1041.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=3.68s, repartition_time=580.89µs, send_time=152.92µs]
+          AggregateExec: mode=Partial, gby=[MobilePhoneModel@0 as MobilePhoneModel], aggr=[count(alias1)], metrics=[output_rows=1.53 K, elapsed_compute=23.13ms, output_bytes=156.3 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=2.26 M, aggregate_arguments_time=54.65µs, aggregation_time=2.10ms, emitting_time=41.26µs, time_calculating_group_ids=20.74ms, reduction_factor=0.13% (1.53 K/1.19 M)]
+            AggregateExec: mode=FinalPartitioned, gby=[MobilePhoneModel@0 as MobilePhoneModel, alias1@1 as alias1], aggr=[], metrics=[output_rows=1.19 M, elapsed_compute=165.19ms, output_bytes=320.0 MB, output_batches=160, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=129.0 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=28.75µs, time_calculating_group_ids=164.66ms]
+              RepartitionExec: partitioning=Hash([MobilePhoneModel@0, alias1@1], 16), input_partitions=16, metrics=[output_rows=1.37 M, elapsed_compute=7.82ms, output_bytes=21.7 MB, output_batches=176, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=2.60s, repartition_time=32.31ms, send_time=13.22ms]
+                AggregateExec: mode=Partial, gby=[MobilePhoneModel@1 as MobilePhoneModel, UserID@0 as alias1], aggr=[], metrics=[output_rows=1.37 M, elapsed_compute=351.54ms, output_bytes=373.0 MB, output_batches=177, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=63.04 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=45.47µs, time_calculating_group_ids=339.23ms, reduction_factor=25% (1.37 M/5.56 M)]
+                  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[UserID, MobilePhoneModel], file_type=liquid_parquet, metrics=[output_rows=5.56 M, elapsed_compute=16ns, output_bytes=86.2 MB, output_batches=12.20 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=287.3 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.39ms, metadata_load_time=2.24ms, page_index_eval_time=4.10µs, row_pushdown_eval_time=32ns, statistics_eval_time=341.54µs, time_elapsed_opening=6.81ms, time_elapsed_processing=2.05s, time_elapsed_scanning_total=2.59s, time_elapsed_scanning_until_data=44.57ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=795MB, disk=0MB
+  Hits: cache_hit=12201, eval_predicate=12218
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 234ms
+
++------------------+---------+
+| MobilePhoneModel | u       |
++------------------+---------+
+| iPad             | 1090347 |
+| iPhone           | 45758   |
+| A500             | 16046   |
+| N8-00            | 5565    |
+| iPho             | 3300    |
+| ONE TOUCH 6030A  | 2759    |
+| GT-P7300B        | 1907    |
+| 3110000          | 1871    |
+| GT-I9500         | 1598    |
+| eagle75          | 1492    |
++------------------+---------+

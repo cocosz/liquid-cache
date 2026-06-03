@@ -1,0 +1,21 @@
++-------------------+--------------------+-----------+
+| WindowClientWidth | WindowClientHeight | pageviews |
++-------------------+--------------------+-----------+
+| 1033              | 384                | 1         |
+| 1408              | 844                | 1         |
+| 1705              | 532                | 1         |
+| 1232              | 893                | 1         |
+| 1638              | 809                | 1         |
+| 746               | 296                | 1         |
+| 1668              | 611                | 1         |
+| 1285              | 787                | 1         |
+| 2004              | 617                | 1         |
+| 1201              | 926                | 1         |
++-------------------+--------------------+-----------+
+
+thread 'tokio-rt-worker' (1071224) panicked at src/core/src/liquid_array/raw/bit_pack_array.rs:301:13:
+Values buffer extends beyond input buffer
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'main' (1071180) panicked at benchmark/src/lib.rs:365:71:
+called `Result::unwrap()` on an `Err` value: Context("Join Error", External(JoinError::Panic(Id(82), "Values buffer extends beyond input buffer", ...)))

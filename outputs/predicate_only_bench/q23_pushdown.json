@@ -1,0 +1,105 @@
+{
+  "args": {
+    "manifest": "benchmark/clickbench/manifest.json",
+    "bench_mode": "Parquet",
+    "iteration": 5,
+    "output": "outputs/predicate_only_bench/q23_pushdown.json",
+    "output_dir": null,
+    "reset_cache": false,
+    "perf_events": false,
+    "partitions": null,
+    "max_memory_mb": null,
+    "flamegraph_dir": null,
+    "query_index": 23,
+    "cache_dir": null,
+    "jaeger_endpoint": null,
+    "explain_analyze": false
+  },
+  "results": [
+    {
+      "query": {
+        "id": 23,
+        "statement": [
+          "SELECT * FROM hits WHERE \"URL\" LIKE '%google%' ORDER BY to_timestamp_seconds(\"EventTime\") LIMIT 10"
+        ]
+      },
+      "iteration_results": [
+        {
+          "network_traffic": 0,
+          "time_millis": 4160,
+          "cache_cpu_time": 11089,
+          "cache_memory_usage": 5284489705,
+          "liquid_cache_usage": 0,
+          "starting_timestamp": {
+            "secs": 0,
+            "nanos": 214395
+          },
+          "disk_bytes_read": 597286912,
+          "disk_bytes_written": 0,
+          "cache_stats": null,
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 1608,
+          "cache_cpu_time": 18382,
+          "cache_memory_usage": 5142312634,
+          "liquid_cache_usage": 0,
+          "starting_timestamp": {
+            "secs": 4,
+            "nanos": 162040305
+          },
+          "disk_bytes_read": 128602112,
+          "disk_bytes_written": 0,
+          "cache_stats": null,
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 1536,
+          "cache_cpu_time": 18227,
+          "cache_memory_usage": 5000340424,
+          "liquid_cache_usage": 0,
+          "starting_timestamp": {
+            "secs": 5,
+            "nanos": 771655789
+          },
+          "disk_bytes_read": 0,
+          "disk_bytes_written": 0,
+          "cache_stats": null,
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 1529,
+          "cache_cpu_time": 17706,
+          "cache_memory_usage": 4855502616,
+          "liquid_cache_usage": 0,
+          "starting_timestamp": {
+            "secs": 7,
+            "nanos": 309371769
+          },
+          "disk_bytes_read": 0,
+          "disk_bytes_written": 0,
+          "cache_stats": null,
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 1514,
+          "cache_cpu_time": 18252,
+          "cache_memory_usage": 4790267364,
+          "liquid_cache_usage": 0,
+          "starting_timestamp": {
+            "secs": 8,
+            "nanos": 840146517
+          },
+          "disk_bytes_read": 0,
+          "disk_bytes_written": 0,
+          "cache_stats": null,
+          "perf_events": null
+        }
+      ]
+    }
+  ]
+}

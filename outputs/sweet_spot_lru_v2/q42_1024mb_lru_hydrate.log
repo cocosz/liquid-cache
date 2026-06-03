@@ -1,0 +1,160 @@
+
+=== EXPLAIN ANALYZE (Query 42, Iteration 0) ===
+GlobalLimitExec: skip=1000, fetch=10, metrics=[output_rows=10, elapsed_compute=11.10µs, output_bytes=15.8 KB, output_batches=1]
+  SortPreservingMergeExec: [date_trunc(minute, m@0) ASC NULLS LAST], fetch=1010, metrics=[output_rows=1.01 K, elapsed_compute=62.65µs, output_bytes=15.8 KB, output_batches=1]
+    SortExec: TopK(fetch=1010), expr=[date_trunc(minute, m@0) ASC NULLS LAST], preserve_partitioning=[true], metrics=[output_rows=1.44 K, elapsed_compute=514.50µs, output_bytes=22.5 KB, output_batches=16, row_replacements=1.44 K]
+      ProjectionExec: expr=[date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0 as m, count(Int64(1))@1 as pageviews], metrics=[output_rows=1.44 K, elapsed_compute=15.24µs, output_bytes=27.2 KB, output_batches=16, expr_0_eval_time=2.49µs, expr_1_eval_time=1.14µs]
+        AggregateExec: mode=FinalPartitioned, gby=[date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0 as date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))], aggr=[count(Int64(1))], metrics=[output_rows=1.44 K, elapsed_compute=801.89µs, output_bytes=27.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=204.3 K, aggregate_arguments_time=10.32µs, aggregation_time=15.26µs, emitting_time=14.68µs, time_calculating_group_ids=89.73µs]
+          RepartitionExec: partitioning=Hash([date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0], 16), input_partitions=16, metrics=[output_rows=2.88 K, elapsed_compute=147.48µs, output_bytes=2.0 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=218.84ms, repartition_time=76.70µs, send_time=28.14µs]
+            AggregateExec: mode=Partial, gby=[date_trunc(minute, to_timestamp_seconds(EventTime@0)) as date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))], aggr=[count(Int64(1))], metrics=[output_rows=2.88 K, elapsed_compute=5.77ms, output_bytes=68.7 KB, output_batches=2, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=259.8 K, aggregate_arguments_time=183.93µs, aggregation_time=482.15µs, emitting_time=12.92µs, time_calculating_group_ids=3.62ms, reduction_factor=0.43% (2.88 K/671.5 K)]
+              DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[EventTime], file_type=liquid_parquet, metrics=[output_rows=671.5 K, elapsed_compute=16ns, output_bytes=5.1 MB, output_batches=92, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=4.78 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=129.79µs, metadata_load_time=161.44ms, page_index_eval_time=3.26µs, row_pushdown_eval_time=32ns, statistics_eval_time=600.73µs, time_elapsed_opening=193.34ms, time_elapsed_processing=64.82ms, time_elapsed_scanning_total=25.29ms, time_elapsed_scanning_until_data=5.48ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=688, mem=13MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=712
+  Misses: cache_miss=172
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 38ms
+
++---------------------+-----------+
+| m                   | pageviews |
++---------------------+-----------+
+| 2013-07-15T12:40:00 | 513       |
+| 2013-07-15T12:41:00 | 457       |
+| 2013-07-15T12:42:00 | 470       |
+| 2013-07-15T12:43:00 | 468       |
+| 2013-07-15T12:44:00 | 453       |
+| 2013-07-15T12:45:00 | 462       |
+| 2013-07-15T12:46:00 | 481       |
+| 2013-07-15T12:47:00 | 458       |
+| 2013-07-15T12:48:00 | 466       |
+| 2013-07-15T12:49:00 | 467       |
++---------------------+-----------+
+
+=== EXPLAIN ANALYZE (Query 42, Iteration 1) ===
+GlobalLimitExec: skip=1000, fetch=10, metrics=[output_rows=10, elapsed_compute=10.70µs, output_bytes=15.8 KB, output_batches=1]
+  SortPreservingMergeExec: [date_trunc(minute, m@0) ASC NULLS LAST], fetch=1010, metrics=[output_rows=1.01 K, elapsed_compute=75.81µs, output_bytes=15.8 KB, output_batches=1]
+    SortExec: TopK(fetch=1010), expr=[date_trunc(minute, m@0) ASC NULLS LAST], preserve_partitioning=[true], metrics=[output_rows=1.44 K, elapsed_compute=428.57µs, output_bytes=22.5 KB, output_batches=16, row_replacements=1.44 K]
+      ProjectionExec: expr=[date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0 as m, count(Int64(1))@1 as pageviews], metrics=[output_rows=1.44 K, elapsed_compute=11.35µs, output_bytes=27.2 KB, output_batches=16, expr_0_eval_time=2.24µs, expr_1_eval_time=1.04µs]
+        AggregateExec: mode=FinalPartitioned, gby=[date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0 as date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))], aggr=[count(Int64(1))], metrics=[output_rows=1.44 K, elapsed_compute=206.93µs, output_bytes=27.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=204.3 K, aggregate_arguments_time=7.27µs, aggregation_time=14.05µs, emitting_time=12.68µs, time_calculating_group_ids=83.53µs]
+          RepartitionExec: partitioning=Hash([date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0], 16), input_partitions=16, metrics=[output_rows=2.88 K, elapsed_compute=106.34µs, output_bytes=2.0 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=26.26ms, repartition_time=53.52µs, send_time=21.24µs]
+            AggregateExec: mode=Partial, gby=[date_trunc(minute, to_timestamp_seconds(EventTime@0)) as date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))], aggr=[count(Int64(1))], metrics=[output_rows=2.88 K, elapsed_compute=5.61ms, output_bytes=68.7 KB, output_batches=2, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=259.8 K, aggregate_arguments_time=166.26µs, aggregation_time=334.50µs, emitting_time=3.20µs, time_calculating_group_ids=3.65ms, reduction_factor=0.43% (2.88 K/671.5 K)]
+              DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[EventTime], file_type=liquid_parquet, metrics=[output_rows=671.5 K, elapsed_compute=16ns, output_bytes=5.1 MB, output_batches=92, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=4.78 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=168.51µs, metadata_load_time=3.05ms, page_index_eval_time=4.32µs, row_pushdown_eval_time=32ns, statistics_eval_time=658.34µs, time_elapsed_opening=7.21ms, time_elapsed_processing=19.59ms, time_elapsed_scanning_total=18.91ms, time_elapsed_scanning_until_data=3.18ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=688, mem=13MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=540
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 18ms
+
++---------------------+-----------+
+| m                   | pageviews |
++---------------------+-----------+
+| 2013-07-15T12:40:00 | 513       |
+| 2013-07-15T12:41:00 | 457       |
+| 2013-07-15T12:42:00 | 470       |
+| 2013-07-15T12:43:00 | 468       |
+| 2013-07-15T12:44:00 | 453       |
+| 2013-07-15T12:45:00 | 462       |
+| 2013-07-15T12:46:00 | 481       |
+| 2013-07-15T12:47:00 | 458       |
+| 2013-07-15T12:48:00 | 466       |
+| 2013-07-15T12:49:00 | 467       |
++---------------------+-----------+
+
+=== EXPLAIN ANALYZE (Query 42, Iteration 2) ===
+GlobalLimitExec: skip=1000, fetch=10, metrics=[output_rows=10, elapsed_compute=8.30µs, output_bytes=15.8 KB, output_batches=1]
+  SortPreservingMergeExec: [date_trunc(minute, m@0) ASC NULLS LAST], fetch=1010, metrics=[output_rows=1.01 K, elapsed_compute=61.80µs, output_bytes=15.8 KB, output_batches=1]
+    SortExec: TopK(fetch=1010), expr=[date_trunc(minute, m@0) ASC NULLS LAST], preserve_partitioning=[true], metrics=[output_rows=1.44 K, elapsed_compute=391.26µs, output_bytes=22.5 KB, output_batches=16, row_replacements=1.44 K]
+      ProjectionExec: expr=[date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0 as m, count(Int64(1))@1 as pageviews], metrics=[output_rows=1.44 K, elapsed_compute=11.42µs, output_bytes=27.2 KB, output_batches=16, expr_0_eval_time=2.26µs, expr_1_eval_time=1.19µs]
+        AggregateExec: mode=FinalPartitioned, gby=[date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0 as date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))], aggr=[count(Int64(1))], metrics=[output_rows=1.44 K, elapsed_compute=195.89µs, output_bytes=27.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=204.3 K, aggregate_arguments_time=7.08µs, aggregation_time=12.17µs, emitting_time=10.86µs, time_calculating_group_ids=72.57µs]
+          RepartitionExec: partitioning=Hash([date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0], 16), input_partitions=16, metrics=[output_rows=2.88 K, elapsed_compute=104.07µs, output_bytes=2.0 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=26.61ms, repartition_time=48.98µs, send_time=21.54µs]
+            AggregateExec: mode=Partial, gby=[date_trunc(minute, to_timestamp_seconds(EventTime@0)) as date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))], aggr=[count(Int64(1))], metrics=[output_rows=2.88 K, elapsed_compute=5.64ms, output_bytes=68.7 KB, output_batches=2, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=259.8 K, aggregate_arguments_time=159.92µs, aggregation_time=334.36µs, emitting_time=3.17µs, time_calculating_group_ids=3.68ms, reduction_factor=0.43% (2.88 K/671.5 K)]
+              DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[EventTime], file_type=liquid_parquet, metrics=[output_rows=671.5 K, elapsed_compute=16ns, output_bytes=5.1 MB, output_batches=92, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=4.78 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=181.09µs, metadata_load_time=3.07ms, page_index_eval_time=6.60µs, row_pushdown_eval_time=32ns, statistics_eval_time=724.81µs, time_elapsed_opening=7.49ms, time_elapsed_processing=19.93ms, time_elapsed_scanning_total=18.96ms, time_elapsed_scanning_until_data=3.29ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=688, mem=13MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=540
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 18ms
+
++---------------------+-----------+
+| m                   | pageviews |
++---------------------+-----------+
+| 2013-07-15T12:40:00 | 513       |
+| 2013-07-15T12:41:00 | 457       |
+| 2013-07-15T12:42:00 | 470       |
+| 2013-07-15T12:43:00 | 468       |
+| 2013-07-15T12:44:00 | 453       |
+| 2013-07-15T12:45:00 | 462       |
+| 2013-07-15T12:46:00 | 481       |
+| 2013-07-15T12:47:00 | 458       |
+| 2013-07-15T12:48:00 | 466       |
+| 2013-07-15T12:49:00 | 467       |
++---------------------+-----------+
+
+=== EXPLAIN ANALYZE (Query 42, Iteration 3) ===
+GlobalLimitExec: skip=1000, fetch=10, metrics=[output_rows=10, elapsed_compute=7.79µs, output_bytes=15.8 KB, output_batches=1]
+  SortPreservingMergeExec: [date_trunc(minute, m@0) ASC NULLS LAST], fetch=1010, metrics=[output_rows=1.01 K, elapsed_compute=50.07µs, output_bytes=15.8 KB, output_batches=1]
+    SortExec: TopK(fetch=1010), expr=[date_trunc(minute, m@0) ASC NULLS LAST], preserve_partitioning=[true], metrics=[output_rows=1.44 K, elapsed_compute=412.21µs, output_bytes=22.5 KB, output_batches=16, row_replacements=1.44 K]
+      ProjectionExec: expr=[date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0 as m, count(Int64(1))@1 as pageviews], metrics=[output_rows=1.44 K, elapsed_compute=14.32µs, output_bytes=27.2 KB, output_batches=16, expr_0_eval_time=2.24µs, expr_1_eval_time=1.36µs]
+        AggregateExec: mode=FinalPartitioned, gby=[date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0 as date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))], aggr=[count(Int64(1))], metrics=[output_rows=1.44 K, elapsed_compute=187.78µs, output_bytes=27.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=204.3 K, aggregate_arguments_time=9.44µs, aggregation_time=13.10µs, emitting_time=13.86µs, time_calculating_group_ids=69.80µs]
+          RepartitionExec: partitioning=Hash([date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0], 16), input_partitions=16, metrics=[output_rows=2.88 K, elapsed_compute=112.62µs, output_bytes=2.0 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=25.86ms, repartition_time=47.13µs, send_time=20.29µs]
+            AggregateExec: mode=Partial, gby=[date_trunc(minute, to_timestamp_seconds(EventTime@0)) as date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))], aggr=[count(Int64(1))], metrics=[output_rows=2.88 K, elapsed_compute=5.81ms, output_bytes=68.7 KB, output_batches=2, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=259.8 K, aggregate_arguments_time=152.54µs, aggregation_time=330.15µs, emitting_time=2.63µs, time_calculating_group_ids=3.90ms, reduction_factor=0.43% (2.88 K/671.5 K)]
+              DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[EventTime], file_type=liquid_parquet, metrics=[output_rows=671.5 K, elapsed_compute=16ns, output_bytes=5.1 MB, output_batches=92, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=4.78 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=154.54µs, metadata_load_time=2.98ms, page_index_eval_time=4.44µs, row_pushdown_eval_time=32ns, statistics_eval_time=637.92µs, time_elapsed_opening=7.06ms, time_elapsed_processing=19.09ms, time_elapsed_scanning_total=18.66ms, time_elapsed_scanning_until_data=2.95ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=688, mem=13MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=540
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 18ms
+
++---------------------+-----------+
+| m                   | pageviews |
++---------------------+-----------+
+| 2013-07-15T12:40:00 | 513       |
+| 2013-07-15T12:41:00 | 457       |
+| 2013-07-15T12:42:00 | 470       |
+| 2013-07-15T12:43:00 | 468       |
+| 2013-07-15T12:44:00 | 453       |
+| 2013-07-15T12:45:00 | 462       |
+| 2013-07-15T12:46:00 | 481       |
+| 2013-07-15T12:47:00 | 458       |
+| 2013-07-15T12:48:00 | 466       |
+| 2013-07-15T12:49:00 | 467       |
++---------------------+-----------+
+
+=== EXPLAIN ANALYZE (Query 42, Iteration 4) ===
+GlobalLimitExec: skip=1000, fetch=10, metrics=[output_rows=10, elapsed_compute=8.66µs, output_bytes=15.8 KB, output_batches=1]
+  SortPreservingMergeExec: [date_trunc(minute, m@0) ASC NULLS LAST], fetch=1010, metrics=[output_rows=1.01 K, elapsed_compute=62.01µs, output_bytes=15.8 KB, output_batches=1]
+    SortExec: TopK(fetch=1010), expr=[date_trunc(minute, m@0) ASC NULLS LAST], preserve_partitioning=[true], metrics=[output_rows=1.44 K, elapsed_compute=437.67µs, output_bytes=22.5 KB, output_batches=16, row_replacements=1.44 K]
+      ProjectionExec: expr=[date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0 as m, count(Int64(1))@1 as pageviews], metrics=[output_rows=1.44 K, elapsed_compute=14.03µs, output_bytes=27.2 KB, output_batches=16, expr_0_eval_time=2.88µs, expr_1_eval_time=1.39µs]
+        AggregateExec: mode=FinalPartitioned, gby=[date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0 as date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))], aggr=[count(Int64(1))], metrics=[output_rows=1.44 K, elapsed_compute=200.53µs, output_bytes=27.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=204.3 K, aggregate_arguments_time=8.88µs, aggregation_time=14.20µs, emitting_time=12.79µs, time_calculating_group_ids=78.97µs]
+          RepartitionExec: partitioning=Hash([date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))@0], 16), input_partitions=16, metrics=[output_rows=2.88 K, elapsed_compute=110.99µs, output_bytes=2.0 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=26.51ms, repartition_time=46.46µs, send_time=22.46µs]
+            AggregateExec: mode=Partial, gby=[date_trunc(minute, to_timestamp_seconds(EventTime@0)) as date_trunc(Utf8("minute"),to_timestamp_seconds(hits.EventTime))], aggr=[count(Int64(1))], metrics=[output_rows=2.88 K, elapsed_compute=5.52ms, output_bytes=68.7 KB, output_batches=2, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=259.8 K, aggregate_arguments_time=164.31µs, aggregation_time=339.30µs, emitting_time=2.56µs, time_calculating_group_ids=3.59ms, reduction_factor=0.43% (2.88 K/671.5 K)]
+              DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[EventTime], file_type=liquid_parquet, metrics=[output_rows=671.5 K, elapsed_compute=16ns, output_bytes=5.1 MB, output_batches=92, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=4.78 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=160.73µs, metadata_load_time=3.56ms, page_index_eval_time=5.01µs, row_pushdown_eval_time=32ns, statistics_eval_time=681.26µs, time_elapsed_opening=7.77ms, time_elapsed_processing=19.88ms, time_elapsed_scanning_total=18.59ms, time_elapsed_scanning_until_data=3.23ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=688, mem=13MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=540
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 18ms
+
++---------------------+-----------+
+| m                   | pageviews |
++---------------------+-----------+
+| 2013-07-15T12:40:00 | 513       |
+| 2013-07-15T12:41:00 | 457       |
+| 2013-07-15T12:42:00 | 470       |
+| 2013-07-15T12:43:00 | 468       |
+| 2013-07-15T12:44:00 | 453       |
+| 2013-07-15T12:45:00 | 462       |
+| 2013-07-15T12:46:00 | 481       |
+| 2013-07-15T12:47:00 | 458       |
+| 2013-07-15T12:48:00 | 466       |
+| 2013-07-15T12:49:00 | 467       |
++---------------------+-----------+

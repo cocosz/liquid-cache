@@ -1,0 +1,271 @@
+{
+  "args": {
+    "manifest": "benchmark/clickbench/manifest_light.json",
+    "bench_mode": "Liquid",
+    "iteration": 5,
+    "output": "outputs/disk_cache_crossover/liquid_q7_10pct.json",
+    "output_dir": null,
+    "reset_cache": false,
+    "perf_events": true,
+    "partitions": null,
+    "max_memory_mb": 18,
+    "flamegraph_dir": null,
+    "query_index": 7,
+    "cache_dir": null,
+    "jaeger_endpoint": null,
+    "explain_analyze": true,
+    "cache_policy": "s3fifo"
+  },
+  "results": [
+    {
+      "query": {
+        "id": 1,
+        "statement": [
+          "SELECT COUNT(*) FROM hits WHERE \"AdvEngineID\" <> 0"
+        ]
+      },
+      "iteration_results": [
+        {
+          "network_traffic": 0,
+          "time_millis": 4206,
+          "cache_cpu_time": 918,
+          "cache_memory_usage": 19807408,
+          "liquid_cache_usage": 18865942,
+          "starting_timestamp": {
+            "secs": 0,
+            "nanos": 81378458
+          },
+          "disk_bytes_read": 34267136,
+          "disk_bytes_written": 31539200,
+          "cache_stats": {
+            "total_entries": 11540,
+            "memory_arrow_entries": 3,
+            "memory_liquid_entries": 8258,
+            "memory_squeezed_liquid_entries": 0,
+            "disk_liquid_entries": 3279,
+            "disk_arrow_entries": 0,
+            "memory_arrow_bytes": 49440,
+            "memory_liquid_bytes": 18816502,
+            "memory_squeezed_liquid_bytes": 0,
+            "memory_usage_bytes": 18865942,
+            "disk_usage_bytes": 8490584,
+            "max_memory_bytes": 18874368,
+            "max_disk_bytes": 18446744073709551615,
+            "runtime": {
+              "get": 0,
+              "get_with_selection": 0,
+              "eval_predicate": 0,
+              "cache_hit": 0,
+              "cache_miss": 0,
+              "get_squeezed_success": 0,
+              "get_squeezed_needs_io": 0,
+              "try_read_liquid_calls": 0,
+              "hit_date32_expression_calls": 0,
+              "read_io_count": 0,
+              "write_io_count": 0,
+              "disk_evictions": 0,
+              "disk_reservation_failures": 0,
+              "eval_predicate_on_liquid_failed": 0,
+              "squeezed_decompressed_count": 0,
+              "squeezed_total_count": 0,
+              "squeeze_io_saved": 0
+            }
+          },
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 149,
+          "cache_cpu_time": 94,
+          "cache_memory_usage": 18865942,
+          "liquid_cache_usage": 18865942,
+          "starting_timestamp": {
+            "secs": 4,
+            "nanos": 381373446
+          },
+          "disk_bytes_read": 18001920,
+          "disk_bytes_written": 4096,
+          "cache_stats": {
+            "total_entries": 11540,
+            "memory_arrow_entries": 3,
+            "memory_liquid_entries": 8258,
+            "memory_squeezed_liquid_entries": 0,
+            "disk_liquid_entries": 3279,
+            "disk_arrow_entries": 0,
+            "memory_arrow_bytes": 49440,
+            "memory_liquid_bytes": 18816502,
+            "memory_squeezed_liquid_bytes": 0,
+            "memory_usage_bytes": 18865942,
+            "disk_usage_bytes": 8490584,
+            "max_memory_bytes": 18874368,
+            "max_disk_bytes": 18446744073709551615,
+            "runtime": {
+              "get": 0,
+              "get_with_selection": 0,
+              "eval_predicate": 0,
+              "cache_hit": 0,
+              "cache_miss": 0,
+              "get_squeezed_success": 0,
+              "get_squeezed_needs_io": 0,
+              "try_read_liquid_calls": 0,
+              "hit_date32_expression_calls": 0,
+              "read_io_count": 0,
+              "write_io_count": 0,
+              "disk_evictions": 0,
+              "disk_reservation_failures": 0,
+              "eval_predicate_on_liquid_failed": 0,
+              "squeezed_decompressed_count": 0,
+              "squeezed_total_count": 0,
+              "squeeze_io_saved": 0
+            }
+          },
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 147,
+          "cache_cpu_time": 100,
+          "cache_memory_usage": 18865942,
+          "liquid_cache_usage": 18865942,
+          "starting_timestamp": {
+            "secs": 4,
+            "nanos": 533797296
+          },
+          "disk_bytes_read": 18001920,
+          "disk_bytes_written": 4096,
+          "cache_stats": {
+            "total_entries": 11540,
+            "memory_arrow_entries": 3,
+            "memory_liquid_entries": 8258,
+            "memory_squeezed_liquid_entries": 0,
+            "disk_liquid_entries": 3279,
+            "disk_arrow_entries": 0,
+            "memory_arrow_bytes": 49440,
+            "memory_liquid_bytes": 18816502,
+            "memory_squeezed_liquid_bytes": 0,
+            "memory_usage_bytes": 18865942,
+            "disk_usage_bytes": 8490584,
+            "max_memory_bytes": 18874368,
+            "max_disk_bytes": 18446744073709551615,
+            "runtime": {
+              "get": 0,
+              "get_with_selection": 0,
+              "eval_predicate": 0,
+              "cache_hit": 0,
+              "cache_miss": 0,
+              "get_squeezed_success": 0,
+              "get_squeezed_needs_io": 0,
+              "try_read_liquid_calls": 0,
+              "hit_date32_expression_calls": 0,
+              "read_io_count": 0,
+              "write_io_count": 0,
+              "disk_evictions": 0,
+              "disk_reservation_failures": 0,
+              "eval_predicate_on_liquid_failed": 0,
+              "squeezed_decompressed_count": 0,
+              "squeezed_total_count": 0,
+              "squeeze_io_saved": 0
+            }
+          },
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 150,
+          "cache_cpu_time": 98,
+          "cache_memory_usage": 18865942,
+          "liquid_cache_usage": 18865942,
+          "starting_timestamp": {
+            "secs": 4,
+            "nanos": 684403082
+          },
+          "disk_bytes_read": 18001920,
+          "disk_bytes_written": 4096,
+          "cache_stats": {
+            "total_entries": 11540,
+            "memory_arrow_entries": 3,
+            "memory_liquid_entries": 8258,
+            "memory_squeezed_liquid_entries": 0,
+            "disk_liquid_entries": 3279,
+            "disk_arrow_entries": 0,
+            "memory_arrow_bytes": 49440,
+            "memory_liquid_bytes": 18816502,
+            "memory_squeezed_liquid_bytes": 0,
+            "memory_usage_bytes": 18865942,
+            "disk_usage_bytes": 8490584,
+            "max_memory_bytes": 18874368,
+            "max_disk_bytes": 18446744073709551615,
+            "runtime": {
+              "get": 0,
+              "get_with_selection": 0,
+              "eval_predicate": 0,
+              "cache_hit": 0,
+              "cache_miss": 0,
+              "get_squeezed_success": 0,
+              "get_squeezed_needs_io": 0,
+              "try_read_liquid_calls": 0,
+              "hit_date32_expression_calls": 0,
+              "read_io_count": 0,
+              "write_io_count": 0,
+              "disk_evictions": 0,
+              "disk_reservation_failures": 0,
+              "eval_predicate_on_liquid_failed": 0,
+              "squeezed_decompressed_count": 0,
+              "squeezed_total_count": 0,
+              "squeeze_io_saved": 0
+            }
+          },
+          "perf_events": null
+        },
+        {
+          "network_traffic": 0,
+          "time_millis": 148,
+          "cache_cpu_time": 103,
+          "cache_memory_usage": 18865942,
+          "liquid_cache_usage": 18865942,
+          "starting_timestamp": {
+            "secs": 4,
+            "nanos": 837393123
+          },
+          "disk_bytes_read": 18001920,
+          "disk_bytes_written": 4096,
+          "cache_stats": {
+            "total_entries": 11540,
+            "memory_arrow_entries": 3,
+            "memory_liquid_entries": 8258,
+            "memory_squeezed_liquid_entries": 0,
+            "disk_liquid_entries": 3279,
+            "disk_arrow_entries": 0,
+            "memory_arrow_bytes": 49440,
+            "memory_liquid_bytes": 18816502,
+            "memory_squeezed_liquid_bytes": 0,
+            "memory_usage_bytes": 18865942,
+            "disk_usage_bytes": 8490584,
+            "max_memory_bytes": 18874368,
+            "max_disk_bytes": 18446744073709551615,
+            "runtime": {
+              "get": 0,
+              "get_with_selection": 0,
+              "eval_predicate": 0,
+              "cache_hit": 0,
+              "cache_miss": 0,
+              "get_squeezed_success": 0,
+              "get_squeezed_needs_io": 0,
+              "try_read_liquid_calls": 0,
+              "hit_date32_expression_calls": 0,
+              "read_io_count": 0,
+              "write_io_count": 0,
+              "disk_evictions": 0,
+              "disk_reservation_failures": 0,
+              "eval_predicate_on_liquid_failed": 0,
+              "squeezed_decompressed_count": 0,
+              "squeezed_total_count": 0,
+              "squeeze_io_saved": 0
+            }
+          },
+          "perf_events": null
+        }
+      ]
+    }
+  ]
+}

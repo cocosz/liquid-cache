@@ -1,0 +1,170 @@
+
+=== EXPLAIN ANALYZE (Query 8, Iteration 0) ===
+SortPreservingMergeExec: [u@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=4.63µs, output_bytes=120.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[u@1 DESC], preserve_partitioning=[true], filter=[u@1 IS NULL OR u@1 > 32992], metrics=[output_rows=160, elapsed_compute=48.95ms, output_bytes=1920.0 B, output_batches=16, row_replacements=242]
+    ProjectionExec: expr=[RegionID@0 as RegionID, count(alias1)@1 as u], metrics=[output_rows=9.04 K, elapsed_compute=19.91µs, output_bytes=134.6 KB, output_batches=16, expr_0_eval_time=3.36µs, expr_1_eval_time=1.54µs]
+      AggregateExec: mode=FinalPartitioned, gby=[RegionID@0 as RegionID], aggr=[count(alias1)], metrics=[output_rows=9.04 K, elapsed_compute=1.21ms, output_bytes=134.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=1.75 M, aggregate_arguments_time=14.38µs, aggregation_time=75.04µs, emitting_time=22.65µs, time_calculating_group_ids=940.99µs]
+        RepartitionExec: partitioning=Hash([RegionID@0], 16), input_partitions=16, metrics=[output_rows=69.75 K, elapsed_compute=691.67µs, output_bytes=1536.0 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=22.84s, repartition_time=1.61ms, send_time=1.48ms]
+          AggregateExec: mode=Partial, gby=[RegionID@0 as RegionID], aggr=[count(alias1)], metrics=[output_rows=69.75 K, elapsed_compute=197.99ms, output_bytes=1149.9 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=4.06 M, aggregate_arguments_time=618.28µs, aggregation_time=33.44ms, emitting_time=46.14µs, time_calculating_group_ids=162.13ms, reduction_factor=0.39% (69.75 K/18.00 M)]
+            AggregateExec: mode=FinalPartitioned, gby=[RegionID@0 as RegionID, alias1@1 as alias1], aggr=[], metrics=[output_rows=18.00 M, elapsed_compute=5.62s, output_bytes=51.8 GB, output_batches=2.21 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=1.75 B, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=38.04µs, time_calculating_group_ids=5.62s]
+              RepartitionExec: partitioning=Hash([RegionID@0, alias1@1], 16), input_partitions=16, metrics=[output_rows=21.32 M, elapsed_compute=263.53ms, output_bytes=244.5 MB, output_batches=2.61 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=13.90s, repartition_time=504.60ms, send_time=1.47s]
+                AggregateExec: mode=Partial, gby=[RegionID@0 as RegionID, UserID@1 as alias1], aggr=[], metrics=[output_rows=21.32 M, elapsed_compute=9.13s, output_bytes=63.7 GB, output_batches=2.61 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=861.9 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=956.13µs, time_calculating_group_ids=9.12s, reduction_factor=21% (21.32 M/100.00 M)]
+                  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[RegionID, UserID], file_type=liquid_parquet, metrics=[output_rows=100.00 M, elapsed_compute=16ns, output_bytes=1146.4 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=0 total → 0 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=328.6 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=32ns, metadata_load_time=386.66ms, page_index_eval_time=32ns, row_pushdown_eval_time=32ns, statistics_eval_time=32ns, time_elapsed_opening=389.54ms, time_elapsed_processing=2.75s, time_elapsed_scanning_total=13.50s, time_elapsed_scanning_until_data=306.26ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 1450ms
+
++----------+---------+
+| RegionID | u       |
++----------+---------+
+| 229      | 2845673 |
+| 2        | 1081016 |
+| 208      | 831676  |
+| 169      | 604583  |
+| 184      | 322661  |
+| 158      | 307152  |
+| 34       | 299479  |
+| 55       | 286525  |
+| 107      | 272448  |
+| 42       | 243181  |
++----------+---------+
+
+=== EXPLAIN ANALYZE (Query 8, Iteration 1) ===
+SortPreservingMergeExec: [u@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=5.05µs, output_bytes=120.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[u@1 DESC], preserve_partitioning=[true], filter=[u@1 IS NULL OR u@1 > 32992], metrics=[output_rows=124, elapsed_compute=39.74ms, output_bytes=1488.0 B, output_batches=16, row_replacements=127]
+    ProjectionExec: expr=[RegionID@0 as RegionID, count(alias1)@1 as u], metrics=[output_rows=9.04 K, elapsed_compute=17.92µs, output_bytes=134.6 KB, output_batches=16, expr_0_eval_time=2.96µs, expr_1_eval_time=1.39µs]
+      AggregateExec: mode=FinalPartitioned, gby=[RegionID@0 as RegionID], aggr=[count(alias1)], metrics=[output_rows=9.04 K, elapsed_compute=1.16ms, output_bytes=134.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=1.75 M, aggregate_arguments_time=9.66µs, aggregation_time=75.75µs, emitting_time=12.71µs, time_calculating_group_ids=956.95µs]
+        RepartitionExec: partitioning=Hash([RegionID@0], 16), input_partitions=16, metrics=[output_rows=69.75 K, elapsed_compute=756.38µs, output_bytes=1536.0 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=12.06s, repartition_time=2.25ms, send_time=986.52µs]
+          AggregateExec: mode=Partial, gby=[RegionID@0 as RegionID], aggr=[count(alias1)], metrics=[output_rows=69.75 K, elapsed_compute=166.37ms, output_bytes=1351.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=4.27 M, aggregate_arguments_time=603.31µs, aggregation_time=12.10ms, emitting_time=49.66µs, time_calculating_group_ids=151.84ms, reduction_factor=0.39% (69.75 K/18.00 M)]
+            AggregateExec: mode=FinalPartitioned, gby=[RegionID@0 as RegionID, alias1@1 as alias1], aggr=[], metrics=[output_rows=18.00 M, elapsed_compute=3.75s, output_bytes=51.8 GB, output_batches=2.21 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=1.75 B, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=28.62µs, time_calculating_group_ids=3.75s]
+              RepartitionExec: partitioning=Hash([RegionID@0, alias1@1], 16), input_partitions=16, metrics=[output_rows=21.32 M, elapsed_compute=98.88ms, output_bytes=244.5 MB, output_batches=2.61 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=7.18s, repartition_time=337.39ms, send_time=897.49ms]
+                AggregateExec: mode=Partial, gby=[RegionID@0 as RegionID, UserID@1 as alias1], aggr=[], metrics=[output_rows=21.32 M, elapsed_compute=5.41s, output_bytes=63.7 GB, output_batches=2.61 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=861.9 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=80.27µs, time_calculating_group_ids=5.40s, reduction_factor=21% (21.32 M/100.00 M)]
+                  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[RegionID, UserID], file_type=liquid_parquet, metrics=[output_rows=100.00 M, elapsed_compute=16ns, output_bytes=1146.4 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=0 total → 0 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=328.6 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=32ns, metadata_load_time=2.08ms, page_index_eval_time=32ns, row_pushdown_eval_time=32ns, statistics_eval_time=32ns, time_elapsed_opening=3.19ms, time_elapsed_processing=976.49ms, time_elapsed_scanning_total=7.17s, time_elapsed_scanning_until_data=60.82ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 765ms
+
++----------+---------+
+| RegionID | u       |
++----------+---------+
+| 229      | 2845673 |
+| 2        | 1081016 |
+| 208      | 831676  |
+| 169      | 604583  |
+| 184      | 322661  |
+| 158      | 307152  |
+| 34       | 299479  |
+| 55       | 286525  |
+| 107      | 272448  |
+| 42       | 243181  |
++----------+---------+
+
+=== EXPLAIN ANALYZE (Query 8, Iteration 2) ===
+SortPreservingMergeExec: [u@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=5.12µs, output_bytes=120.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[u@1 DESC], preserve_partitioning=[true], filter=[u@1 IS NULL OR u@1 > 32992], metrics=[output_rows=125, elapsed_compute=491.39µs, output_bytes=1500.0 B, output_batches=16, row_replacements=146]
+    ProjectionExec: expr=[RegionID@0 as RegionID, count(alias1)@1 as u], metrics=[output_rows=9.04 K, elapsed_compute=22.31µs, output_bytes=134.6 KB, output_batches=16, expr_0_eval_time=3.73µs, expr_1_eval_time=1.51µs]
+      AggregateExec: mode=FinalPartitioned, gby=[RegionID@0 as RegionID], aggr=[count(alias1)], metrics=[output_rows=9.04 K, elapsed_compute=1.30ms, output_bytes=134.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=1.75 M, aggregate_arguments_time=13.71µs, aggregation_time=85.04µs, emitting_time=20.68µs, time_calculating_group_ids=1.08ms]
+        RepartitionExec: partitioning=Hash([RegionID@0], 16), input_partitions=16, metrics=[output_rows=69.75 K, elapsed_compute=586.18µs, output_bytes=1536.0 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=12.37s, repartition_time=2.15ms, send_time=358.65µs]
+          AggregateExec: mode=Partial, gby=[RegionID@0 as RegionID], aggr=[count(alias1)], metrics=[output_rows=69.75 K, elapsed_compute=171.65ms, output_bytes=1193.8 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=4.11 M, aggregate_arguments_time=602.52µs, aggregation_time=12.32ms, emitting_time=47.82µs, time_calculating_group_ids=156.88ms, reduction_factor=0.39% (69.75 K/18.00 M)]
+            AggregateExec: mode=FinalPartitioned, gby=[RegionID@0 as RegionID, alias1@1 as alias1], aggr=[], metrics=[output_rows=18.00 M, elapsed_compute=3.64s, output_bytes=51.8 GB, output_batches=2.21 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=1.75 B, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=31.65µs, time_calculating_group_ids=3.63s]
+              RepartitionExec: partitioning=Hash([RegionID@0, alias1@1], 16), input_partitions=16, metrics=[output_rows=21.32 M, elapsed_compute=99.21ms, output_bytes=244.5 MB, output_batches=2.61 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=7.37s, repartition_time=310.65ms, send_time=791.79ms]
+                AggregateExec: mode=Partial, gby=[RegionID@0 as RegionID, UserID@1 as alias1], aggr=[], metrics=[output_rows=21.32 M, elapsed_compute=5.60s, output_bytes=63.7 GB, output_batches=2.61 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=861.9 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=102.61µs, time_calculating_group_ids=5.58s, reduction_factor=21% (21.32 M/100.00 M)]
+                  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[RegionID, UserID], file_type=liquid_parquet, metrics=[output_rows=100.00 M, elapsed_compute=16ns, output_bytes=1146.4 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=0 total → 0 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=328.6 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=32ns, metadata_load_time=1.96ms, page_index_eval_time=32ns, row_pushdown_eval_time=32ns, statistics_eval_time=32ns, time_elapsed_opening=2.82ms, time_elapsed_processing=991.51ms, time_elapsed_scanning_total=7.36s, time_elapsed_scanning_until_data=104.65ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 785ms
+
++----------+---------+
+| RegionID | u       |
++----------+---------+
+| 229      | 2845673 |
+| 2        | 1081016 |
+| 208      | 831676  |
+| 169      | 604583  |
+| 184      | 322661  |
+| 158      | 307152  |
+| 34       | 299479  |
+| 55       | 286525  |
+| 107      | 272448  |
+| 42       | 243181  |
++----------+---------+
+
+=== EXPLAIN ANALYZE (Query 8, Iteration 3) ===
+SortPreservingMergeExec: [u@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=4.93µs, output_bytes=120.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[u@1 DESC], preserve_partitioning=[true], filter=[u@1 IS NULL OR u@1 > 32992], metrics=[output_rows=124, elapsed_compute=469.25µs, output_bytes=1488.0 B, output_batches=16, row_replacements=136]
+    ProjectionExec: expr=[RegionID@0 as RegionID, count(alias1)@1 as u], metrics=[output_rows=9.04 K, elapsed_compute=19.34µs, output_bytes=134.6 KB, output_batches=16, expr_0_eval_time=3.17µs, expr_1_eval_time=1.49µs]
+      AggregateExec: mode=FinalPartitioned, gby=[RegionID@0 as RegionID], aggr=[count(alias1)], metrics=[output_rows=9.04 K, elapsed_compute=1.19ms, output_bytes=134.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=1.75 M, aggregate_arguments_time=9.67µs, aggregation_time=79.73µs, emitting_time=15.32µs, time_calculating_group_ids=1.00ms]
+        RepartitionExec: partitioning=Hash([RegionID@0], 16), input_partitions=16, metrics=[output_rows=69.75 K, elapsed_compute=647.03µs, output_bytes=1536.0 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=12.65s, repartition_time=2.18ms, send_time=388.97µs]
+          AggregateExec: mode=Partial, gby=[RegionID@0 as RegionID], aggr=[count(alias1)], metrics=[output_rows=69.75 K, elapsed_compute=172.01ms, output_bytes=1193.9 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=4.11 M, aggregate_arguments_time=636.50µs, aggregation_time=11.78ms, emitting_time=73.73µs, time_calculating_group_ids=157.62ms, reduction_factor=0.39% (69.75 K/18.00 M)]
+            AggregateExec: mode=FinalPartitioned, gby=[RegionID@0 as RegionID, alias1@1 as alias1], aggr=[], metrics=[output_rows=18.00 M, elapsed_compute=3.58s, output_bytes=51.8 GB, output_batches=2.21 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=1.75 B, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=31.46µs, time_calculating_group_ids=3.57s]
+              RepartitionExec: partitioning=Hash([RegionID@0, alias1@1], 16), input_partitions=16, metrics=[output_rows=21.32 M, elapsed_compute=94.46ms, output_bytes=244.5 MB, output_batches=2.61 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=7.25s, repartition_time=316.49ms, send_time=843.99ms]
+                AggregateExec: mode=Partial, gby=[RegionID@0 as RegionID, UserID@1 as alias1], aggr=[], metrics=[output_rows=21.32 M, elapsed_compute=5.52s, output_bytes=63.7 GB, output_batches=2.61 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=861.9 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=51.19µs, time_calculating_group_ids=5.50s, reduction_factor=21% (21.32 M/100.00 M)]
+                  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[RegionID, UserID], file_type=liquid_parquet, metrics=[output_rows=100.00 M, elapsed_compute=16ns, output_bytes=1146.4 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=0 total → 0 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=328.6 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=32ns, metadata_load_time=2.52ms, page_index_eval_time=32ns, row_pushdown_eval_time=32ns, statistics_eval_time=32ns, time_elapsed_opening=3.69ms, time_elapsed_processing=978.16ms, time_elapsed_scanning_total=7.23s, time_elapsed_scanning_until_data=57.58ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 797ms
+
++----------+---------+
+| RegionID | u       |
++----------+---------+
+| 229      | 2845673 |
+| 2        | 1081016 |
+| 208      | 831676  |
+| 169      | 604583  |
+| 184      | 322661  |
+| 158      | 307152  |
+| 34       | 299479  |
+| 55       | 286525  |
+| 107      | 272448  |
+| 42       | 243181  |
++----------+---------+
+
+=== EXPLAIN ANALYZE (Query 8, Iteration 4) ===
+SortPreservingMergeExec: [u@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=4.63µs, output_bytes=120.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[u@1 DESC], preserve_partitioning=[true], filter=[u@1 IS NULL OR u@1 > 32992], metrics=[output_rows=119, elapsed_compute=402.24µs, output_bytes=1428.0 B, output_batches=16, row_replacements=128]
+    ProjectionExec: expr=[RegionID@0 as RegionID, count(alias1)@1 as u], metrics=[output_rows=9.04 K, elapsed_compute=19.86µs, output_bytes=134.6 KB, output_batches=16, expr_0_eval_time=3.25µs, expr_1_eval_time=1.52µs]
+      AggregateExec: mode=FinalPartitioned, gby=[RegionID@0 as RegionID], aggr=[count(alias1)], metrics=[output_rows=9.04 K, elapsed_compute=1.30ms, output_bytes=134.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=1.75 M, aggregate_arguments_time=12.74µs, aggregation_time=86.28µs, emitting_time=15.01µs, time_calculating_group_ids=1.09ms]
+        RepartitionExec: partitioning=Hash([RegionID@0], 16), input_partitions=16, metrics=[output_rows=69.75 K, elapsed_compute=527.37µs, output_bytes=1536.0 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=12.27s, repartition_time=2.12ms, send_time=314.39µs]
+          AggregateExec: mode=Partial, gby=[RegionID@0 as RegionID], aggr=[count(alias1)], metrics=[output_rows=69.75 K, elapsed_compute=169.30ms, output_bytes=1160.6 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=4.07 M, aggregate_arguments_time=580.66µs, aggregation_time=11.86ms, emitting_time=58.51µs, time_calculating_group_ids=155.03ms, reduction_factor=0.39% (69.75 K/18.00 M)]
+            AggregateExec: mode=FinalPartitioned, gby=[RegionID@0 as RegionID, alias1@1 as alias1], aggr=[], metrics=[output_rows=18.00 M, elapsed_compute=3.75s, output_bytes=51.8 GB, output_batches=2.21 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=1.75 B, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=33.52µs, time_calculating_group_ids=3.74s]
+              RepartitionExec: partitioning=Hash([RegionID@0, alias1@1], 16), input_partitions=16, metrics=[output_rows=21.32 M, elapsed_compute=94.42ms, output_bytes=244.5 MB, output_batches=2.61 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=7.17s, repartition_time=353.13ms, send_time=923.00ms]
+                AggregateExec: mode=Partial, gby=[RegionID@0 as RegionID, UserID@1 as alias1], aggr=[], metrics=[output_rows=21.32 M, elapsed_compute=5.49s, output_bytes=63.7 GB, output_batches=2.61 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=861.9 M, aggregate_arguments_time=16ns, aggregation_time=16ns, emitting_time=61.02µs, time_calculating_group_ids=5.47s, reduction_factor=21% (21.32 M/100.00 M)]
+                  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[RegionID, UserID], file_type=liquid_parquet, metrics=[output_rows=100.00 M, elapsed_compute=16ns, output_bytes=1146.4 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=0 total → 0 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=328.6 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=32ns, metadata_load_time=2.09ms, page_index_eval_time=32ns, row_pushdown_eval_time=32ns, statistics_eval_time=32ns, time_elapsed_opening=3.05ms, time_elapsed_processing=992.13ms, time_elapsed_scanning_total=7.15s, time_elapsed_scanning_until_data=116.28ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 779ms
+
++----------+---------+
+| RegionID | u       |
++----------+---------+
+| 229      | 2845673 |
+| 2        | 1081016 |
+| 208      | 831676  |
+| 169      | 604583  |
+| 184      | 322661  |
+| 158      | 307152  |
+| 34       | 299479  |
+| 55       | 286525  |
+| 107      | 272448  |
+| 42       | 243181  |
++----------+---------+

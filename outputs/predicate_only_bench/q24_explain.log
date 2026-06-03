@@ -1,0 +1,140 @@
+
+=== EXPLAIN ANALYZE (Query 24, Iteration 0) ===
+ProjectionExec: expr=[SearchPhrase@0 as SearchPhrase], metrics=[output_rows=10, elapsed_compute=2.74µs, output_bytes=491.0 B, output_batches=1, expr_0_eval_time=420ns]
+  SortPreservingMergeExec: [to_timestamp_seconds(EventTime@1) ASC NULLS LAST], fetch=10, metrics=[output_rows=10, elapsed_compute=9.44µs, output_bytes=571.0 B, output_batches=1]
+    SortExec: TopK(fetch=10), expr=[to_timestamp_seconds(EventTime@1) ASC NULLS LAST], preserve_partitioning=[true], filter=[to_timestamp_seconds(EventTime@1) < 1372708804], metrics=[output_rows=83, elapsed_compute=6.50ms, output_bytes=5.4 KB, output_batches=11, row_replacements=343]
+      DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[SearchPhrase, EventTime], file_type=liquid_parquet, metrics=[output_rows=1.65 K, elapsed_compute=16ns, output_bytes=113.9 KB, output_batches=104, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=776.2 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=38, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.13ms, metadata_load_time=160.23ms, page_index_eval_time=2.86µs, row_pushdown_eval_time=6.11µs, statistics_eval_time=429.22µs, time_elapsed_opening=178.99ms, time_elapsed_processing=8.60s, time_elapsed_scanning_total=9.07s, time_elapsed_scanning_until_data=3.82s, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=24436, mem=2047MB, disk=0MB
+  Hits: cache_hit=209, eval_predicate=36577
+  Misses: cache_miss=12218
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 808ms
+
++------------------------------------+
+| SearchPhrase                       |
++------------------------------------+
+| симптомы регистратов               |
+| galaxy s4 zoom фильм               |
+| ночно китая женщины                |
+| фильм небольшой бизнеса североятно |
+| компьютерапии серия нарий          |
+| анапа оперевянные волшебную        |
+| авом констеть ребенка краево       |
+| отдыха чем прокат                  |
+| брита ганам котлы на шерлок        |
+| скачать читалию в духовке          |
++------------------------------------+
+
+=== EXPLAIN ANALYZE (Query 24, Iteration 1) ===
+ProjectionExec: expr=[SearchPhrase@0 as SearchPhrase], metrics=[output_rows=10, elapsed_compute=1.07µs, output_bytes=491.0 B, output_batches=1, expr_0_eval_time=250ns]
+  SortPreservingMergeExec: [to_timestamp_seconds(EventTime@1) ASC NULLS LAST], fetch=10, metrics=[output_rows=10, elapsed_compute=6.70µs, output_bytes=571.0 B, output_batches=1]
+    SortExec: TopK(fetch=10), expr=[to_timestamp_seconds(EventTime@1) ASC NULLS LAST], preserve_partitioning=[true], filter=[to_timestamp_seconds(EventTime@1) < 1372708804], metrics=[output_rows=86, elapsed_compute=989.53µs, output_bytes=6.0 KB, output_batches=12, row_replacements=348]
+      DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[SearchPhrase, EventTime], file_type=liquid_parquet, metrics=[output_rows=2.41 K, elapsed_compute=16ns, output_bytes=169.1 KB, output_batches=102, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=0, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=1.67 K, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.36ms, metadata_load_time=2.50ms, page_index_eval_time=4.30µs, row_pushdown_eval_time=9.20µs, statistics_eval_time=514.00µs, time_elapsed_opening=7.89ms, time_elapsed_processing=659.76ms, time_elapsed_scanning_total=652.92ms, time_elapsed_scanning_until_data=263.95ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=24436, mem=2047MB, disk=0MB
+  Hits: cache_hit=207, eval_predicate=24357
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 56ms
+
++------------------------------------+
+| SearchPhrase                       |
++------------------------------------+
+| симптомы регистратов               |
+| galaxy s4 zoom фильм               |
+| ночно китая женщины                |
+| фильм небольшой бизнеса североятно |
+| компьютерапии серия нарий          |
+| скачать читалию в духовке          |
+| авом констеть ребенка краево       |
+| анапа оперевянные волшебную        |
+| брита ганам котлы на шерлок        |
+| отдыха чем прокат                  |
++------------------------------------+
+
+=== EXPLAIN ANALYZE (Query 24, Iteration 2) ===
+ProjectionExec: expr=[SearchPhrase@0 as SearchPhrase], metrics=[output_rows=10, elapsed_compute=870ns, output_bytes=491.0 B, output_batches=1, expr_0_eval_time=250ns]
+  SortPreservingMergeExec: [to_timestamp_seconds(EventTime@1) ASC NULLS LAST], fetch=10, metrics=[output_rows=10, elapsed_compute=7.53µs, output_bytes=571.0 B, output_batches=1]
+    SortExec: TopK(fetch=10), expr=[to_timestamp_seconds(EventTime@1) ASC NULLS LAST], preserve_partitioning=[true], filter=[to_timestamp_seconds(EventTime@1) < 1372708804], metrics=[output_rows=87, elapsed_compute=1.07ms, output_bytes=5.9 KB, output_batches=12, row_replacements=347]
+      DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[SearchPhrase, EventTime], file_type=liquid_parquet, metrics=[output_rows=7.29 K, elapsed_compute=16ns, output_bytes=493.7 KB, output_batches=104, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=0, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=2.54 K, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=24.15ms, metadata_load_time=2.27ms, page_index_eval_time=5.03µs, row_pushdown_eval_time=12.20µs, statistics_eval_time=484.15µs, time_elapsed_opening=29.01ms, time_elapsed_processing=684.97ms, time_elapsed_scanning_total=657.11ms, time_elapsed_scanning_until_data=154.40ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=24436, mem=2047MB, disk=0MB
+  Hits: cache_hit=213, eval_predicate=24355
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 60ms
+
++------------------------------------+
+| SearchPhrase                       |
++------------------------------------+
+| симптомы регистратов               |
+| galaxy s4 zoom фильм               |
+| ночно китая женщины                |
+| фильм небольшой бизнеса североятно |
+| компьютерапии серия нарий          |
+| скачать читалию в духовке          |
+| авом констеть ребенка краево       |
+| анапа оперевянные волшебную        |
+| брита ганам котлы на шерлок        |
+| отдыха чем прокат                  |
++------------------------------------+
+
+=== EXPLAIN ANALYZE (Query 24, Iteration 3) ===
+ProjectionExec: expr=[SearchPhrase@0 as SearchPhrase], metrics=[output_rows=10, elapsed_compute=1.12µs, output_bytes=491.0 B, output_batches=1, expr_0_eval_time=280ns]
+  SortPreservingMergeExec: [to_timestamp_seconds(EventTime@1) ASC NULLS LAST], fetch=10, metrics=[output_rows=10, elapsed_compute=6.79µs, output_bytes=571.0 B, output_batches=1]
+    SortExec: TopK(fetch=10), expr=[to_timestamp_seconds(EventTime@1) ASC NULLS LAST], preserve_partitioning=[true], filter=[to_timestamp_seconds(EventTime@1) < 1372708804], metrics=[output_rows=79, elapsed_compute=986.07µs, output_bytes=5.6 KB, output_batches=11, row_replacements=332]
+      DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[SearchPhrase, EventTime], file_type=liquid_parquet, metrics=[output_rows=2.88 K, elapsed_compute=16ns, output_bytes=189.4 KB, output_batches=102, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=0, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=1.88 K, pushdown_rows_pruned=4.48 K, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=21.60ms, metadata_load_time=2.21ms, page_index_eval_time=5.52µs, row_pushdown_eval_time=36.84µs, statistics_eval_time=458.48µs, time_elapsed_opening=26.35ms, time_elapsed_processing=681.69ms, time_elapsed_scanning_total=656.39ms, time_elapsed_scanning_until_data=201.75ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=24436, mem=2047MB, disk=0MB
+  Hits: cache_hit=210, eval_predicate=24354
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 65ms
+
++------------------------------------+
+| SearchPhrase                       |
++------------------------------------+
+| симптомы регистратов               |
+| galaxy s4 zoom фильм               |
+| ночно китая женщины                |
+| фильм небольшой бизнеса североятно |
+| компьютерапии серия нарий          |
+| скачать читалию в духовке          |
+| авом констеть ребенка краево       |
+| анапа оперевянные волшебную        |
+| брита ганам котлы на шерлок        |
+| отдыха чем прокат                  |
++------------------------------------+
+
+=== EXPLAIN ANALYZE (Query 24, Iteration 4) ===
+ProjectionExec: expr=[SearchPhrase@0 as SearchPhrase], metrics=[output_rows=10, elapsed_compute=1.20µs, output_bytes=491.0 B, output_batches=1, expr_0_eval_time=251ns]
+  SortPreservingMergeExec: [to_timestamp_seconds(EventTime@1) ASC NULLS LAST], fetch=10, metrics=[output_rows=10, elapsed_compute=6.38µs, output_bytes=571.0 B, output_batches=1]
+    SortExec: TopK(fetch=10), expr=[to_timestamp_seconds(EventTime@1) ASC NULLS LAST], preserve_partitioning=[true], filter=[to_timestamp_seconds(EventTime@1) < 1372708804], metrics=[output_rows=60, elapsed_compute=800.85µs, output_bytes=4.2 KB, output_batches=10, row_replacements=260]
+      DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[SearchPhrase, EventTime], file_type=liquid_parquet, metrics=[output_rows=2.36 K, elapsed_compute=16ns, output_bytes=165.7 KB, output_batches=93, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=0, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=1.63 K, pushdown_rows_pruned=483, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.44ms, metadata_load_time=2.27ms, page_index_eval_time=3.66µs, row_pushdown_eval_time=19.20µs, statistics_eval_time=436.64µs, time_elapsed_opening=26.28ms, time_elapsed_processing=678.90ms, time_elapsed_scanning_total=653.46ms, time_elapsed_scanning_until_data=290.25ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=24436, mem=2047MB, disk=0MB
+  Hits: cache_hit=189, eval_predicate=24357
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 62ms
+
++------------------------------------+
+| SearchPhrase                       |
++------------------------------------+
+| симптомы регистратов               |
+| galaxy s4 zoom фильм               |
+| ночно китая женщины                |
+| фильм небольшой бизнеса североятно |
+| компьютерапии серия нарий          |
+| анапа оперевянные волшебную        |
+| авом констеть ребенка краево       |
+| скачать читалию в духовке          |
+| брита ганам котлы на шерлок        |
+| отдыха чем прокат                  |
++------------------------------------+

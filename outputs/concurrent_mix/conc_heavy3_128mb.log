@@ -1,0 +1,31 @@
+
+=== EXPLAIN ANALYZE (Query 32, Iteration 0) ===
+SortPreservingMergeExec: [c@2 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=16.80µs, output_bytes=360.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[c@2 DESC], preserve_partitioning=[true], filter=[c@2 IS NULL OR c@2 > 1], metrics=[output_rows=14, elapsed_compute=277.88ms, output_bytes=504.0 B, output_batches=4, row_replacements=14]
+    ProjectionExec: expr=[WatchID@0 as WatchID, ClientIP@1 as ClientIP, count(Int64(1))@2 as c, sum(hits.IsRefresh)@3 as sum(hits.IsRefresh), avg(hits.ResolutionWidth)@4 as avg(hits.ResolutionWidth)], metrics=[output_rows=100.00 M, elapsed_compute=20.88ms, output_bytes=3.4 TB, output_batches=12.21 K, expr_0_eval_time=2.07ms, expr_1_eval_time=1.27ms, expr_2_eval_time=1.08ms, expr_3_eval_time=880.36µs, expr_4_eval_time=980.02µs]
+      AggregateExec: mode=FinalPartitioned, gby=[WatchID@0 as WatchID, ClientIP@1 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=100.00 M, elapsed_compute=43.95s, output_bytes=3.4 TB, output_batches=12.21 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=13.42 B, aggregate_arguments_time=33.28ms, aggregation_time=21.92s, emitting_time=698.35ms, time_calculating_group_ids=30.55s]
+        RepartitionExec: partitioning=Hash([WatchID@0, ClientIP@1], 16), input_partitions=16, metrics=[output_rows=100.00 M, elapsed_compute=1.67s, output_bytes=4.1 GB, output_batches=12.21 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=7.35s, repartition_time=4.56s, send_time=17.47s]
+          AggregateExec: mode=Partial, gby=[WatchID@0 as WatchID, ClientIP@1 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=100.00 M, elapsed_compute=1.49s, output_bytes=5.1 GB, output_batches=12.22 K, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=98.29 M, peak_mem_used=107.0 M, aggregate_arguments_time=8.20ms, aggregation_time=180.43ms, emitting_time=328.81µs, time_calculating_group_ids=522.50ms, reduction_factor=100% (1.70 M/1.70 M)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[WatchID, ClientIP, IsRefresh, ResolutionWidth], file_type=liquid_parquet, metrics=[output_rows=100.00 M, elapsed_compute=16ns, output_bytes=1526.9 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=0 total → 0 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=1.10 B, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=32ns, metadata_load_time=185.22ms, page_index_eval_time=32ns, row_pushdown_eval_time=32ns, statistics_eval_time=32ns, time_elapsed_opening=188.35ms, time_elapsed_processing=4.32s, time_elapsed_scanning_total=52.65s, time_elapsed_scanning_until_data=514.83ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 3775ms
+
++---------------------+-------------+---+---------------------+---------------------------+
+| WatchID             | ClientIP    | c | sum(hits.IsRefresh) | avg(hits.ResolutionWidth) |
++---------------------+-------------+---+---------------------+---------------------------+
+| 8566928176839891583 | -1402644643 | 2 | 0                   | 1368.0                    |
+| 7904046282518428963 | 1509330109  | 2 | 0                   | 1368.0                    |
+| 6655575552203051303 | 1611957945  | 2 | 0                   | 1638.0                    |
+| 7224410078130478461 | -776509581  | 2 | 0                   | 1368.0                    |
+| 7189357198919837215 | 1979182515  | 1 | 0                   | 1638.0                    |
+| 8462049834106874434 | 1979182515  | 1 | 0                   | 1638.0                    |
+| 6942266081638847031 | 571213924   | 1 | 1                   | 1750.0                    |
+| 5689440686001763767 | -992900281  | 1 | 0                   | 1638.0                    |
+| 6557500352230160502 | 2099714673  | 1 | 0                   | 1828.0                    |
+| 8919577815062082871 | 1356120667  | 1 | 0                   | 0.0                       |
++---------------------+-------------+---+---------------------+---------------------------+

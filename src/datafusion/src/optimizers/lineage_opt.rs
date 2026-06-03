@@ -156,6 +156,7 @@ impl OptimizerRule for LineageOptimizer {
         plan: LogicalPlan,
         _config: &dyn OptimizerConfig,
     ) -> Result<Transformed<LogicalPlan>, DataFusionError> {
+        eprintln!("[LineageOptimizer] rewrite() called. Plan:\n{}", plan.display_indent());
         let mut analyzer = LineageAnalyzer::default();
         let _ = analyzer.analyze_plan(&plan)?;
         let table_usage = analyzer.finish();
@@ -170,6 +171,7 @@ impl OptimizerRule for LineageOptimizer {
 
         let annotations =
             build_annotation_map(&date_findings, &variant_findings, &substring_findings);
+        eprintln!("[LineageOptimizer] analysis complete. annotations={}", annotations.len());
         annotate_plan_with_extractions(plan, &annotations)
     }
 }
@@ -270,6 +272,7 @@ impl LineageAnalyzer {
             LogicalPlan::Union(union) => self.analyze_union(union),
             LogicalPlan::Distinct(distinct) => self.analyze_distinct(distinct),
             other => {
+                eprintln!("[LineageOptimizer] analyze_plan: unhandled node type: {}", other.display());
                 let mut merged = LineageMap::new();
                 for input in other.inputs() {
                     let child = self.analyze_plan(input)?;
@@ -282,6 +285,9 @@ impl LineageAnalyzer {
 
     fn analyze_table_scan(&mut self, scan: &TableScan) -> Result<LineageMap> {
         let schema = scan.projected_schema.as_ref();
+        eprintln!("[LineageOptimizer] analyze_table_scan: table={}, projected_schema_fields={:?}", 
+            scan.table_name,
+            schema.columns().iter().map(|c| c.flat_name()).collect::<Vec<_>>());
         let mut map = LineageMap::new();
         for (index, column) in schema.columns().iter().enumerate() {
             let field = schema.field(index);
@@ -290,8 +296,12 @@ impl LineageAnalyzer {
         }
 
         for filter in &scan.filters {
-            let usages = lineage_for_expr(filter, &map, schema)?;
-            self.record(&usages);
+            match lineage_for_expr(filter, &map, schema) {
+                Ok(usages) => self.record(&usages),
+                Err(e) => {
+                    eprintln!("[LineageOptimizer] analyze_table_scan: skipping filter {:?}, error: {}", filter, e);
+                }
+            }
         }
 
         Ok(map)
@@ -300,6 +310,9 @@ impl LineageAnalyzer {
     fn analyze_projection(&mut self, projection: &Projection) -> Result<LineageMap> {
         let input_map = self.analyze_plan(projection.input.as_ref())?;
         let input_schema = projection.input.schema();
+        eprintln!("[LineageOptimizer] analyze_projection: input_schema_fields={:?}, exprs={:?}", 
+            input_schema.columns().iter().map(|c| c.flat_name()).collect::<Vec<_>>(),
+            projection.expr.iter().map(|e| format!("{}", e)).collect::<Vec<_>>());
         let mut output = LineageMap::new();
         for (expr, column) in projection.expr.iter().zip(projection.schema.columns()) {
             let usages = lineage_for_expr(expr, &input_map, input_schema.as_ref())?;
@@ -312,6 +325,9 @@ impl LineageAnalyzer {
     fn analyze_filter(&mut self, filter: &Filter) -> Result<LineageMap> {
         let input_map = self.analyze_plan(filter.input.as_ref())?;
         let schema = filter.input.schema();
+        eprintln!("[LineageOptimizer] analyze_filter: predicate={}, schema_fields={:?}", 
+            filter.predicate, 
+            schema.columns().iter().map(|c| c.flat_name()).collect::<Vec<_>>());
         let usages = lineage_for_expr(&filter.predicate, &input_map, schema.as_ref())?;
         self.record(&usages);
         Ok(input_map)
@@ -330,6 +346,10 @@ impl LineageAnalyzer {
     fn analyze_aggregate(&mut self, aggregate: &Aggregate) -> Result<LineageMap> {
         let input_map = self.analyze_plan(aggregate.input.as_ref())?;
         let schema = aggregate.input.schema();
+        eprintln!("[LineageOptimizer] analyze_aggregate: input_schema_fields={:?}, group_exprs={:?}, aggr_exprs={:?}",
+            schema.columns().iter().map(|c| c.flat_name()).collect::<Vec<_>>(),
+            aggregate.group_expr.iter().map(|e| format!("{}", e)).collect::<Vec<_>>(),
+            aggregate.aggr_expr.iter().map(|e| format!("{}", e)).collect::<Vec<_>>());
         let mut output = LineageMap::new();
         let mut expr_iter = aggregate
             .group_expr
@@ -901,6 +921,9 @@ fn lineage_for_expr(
             if let Some(usages) = input_lineage.get(&key) {
                 Ok(usages.clone())
             } else {
+                eprintln!("[LineageOptimizer] lineage_for_expr: column={} not in input_lineage, resolving from schema. schema_fields={:?}",
+                    column.flat_name(),
+                    schema.columns().iter().map(|c| c.flat_name()).collect::<Vec<_>>());
                 let field = schema.field_from_column(column)?;
                 Ok(vec![ColumnUsage::new_base(
                     column,

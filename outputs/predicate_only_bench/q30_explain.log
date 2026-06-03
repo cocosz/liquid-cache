@@ -1,0 +1,155 @@
+
+=== EXPLAIN ANALYZE (Query 30, Iteration 0) ===
+SortPreservingMergeExec: [c@2 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=7.43µs, output_bytes=300.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[c@2 DESC], preserve_partitioning=[true], filter=[c@2 IS NULL OR c@2 > 585], metrics=[output_rows=107, elapsed_compute=19.44ms, output_bytes=3.1 KB, output_batches=16, row_replacements=267]
+    ProjectionExec: expr=[SearchEngineID@0 as SearchEngineID, ClientIP@1 as ClientIP, count(Int64(1))@2 as c, sum(hits.IsRefresh)@3 as sum(hits.IsRefresh), avg(hits.ResolutionWidth)@4 as avg(hits.ResolutionWidth)], metrics=[output_rows=5.73 M, elapsed_compute=1.49ms, output_bytes=10.3 GB, output_batches=704, expr_0_eval_time=184.95µs, expr_1_eval_time=89.58µs, expr_2_eval_time=81.52µs, expr_3_eval_time=69.18µs, expr_4_eval_time=78.83µs]
+      AggregateExec: mode=FinalPartitioned, gby=[SearchEngineID@0 as SearchEngineID, ClientIP@1 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=5.73 M, elapsed_compute=1.61s, output_bytes=10.3 GB, output_batches=704, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=741.3 M, aggregate_arguments_time=2.11ms, aggregation_time=779.77ms, emitting_time=27.00ms, time_calculating_group_ids=1.14s]
+        RepartitionExec: partitioning=Hash([SearchEngineID@0, ClientIP@1], 16), input_partitions=16, metrics=[output_rows=7.90 M, elapsed_compute=86.25ms, output_bytes=289.8 MB, output_batches=976, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=9.70s, repartition_time=262.74ms, send_time=376.15ms]
+          AggregateExec: mode=Partial, gby=[SearchEngineID@3 as SearchEngineID, ClientIP@0 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=7.90 M, elapsed_compute=2.65s, output_bytes=25.6 GB, output_batches=974, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=522.3 M, aggregate_arguments_time=71.45ms, aggregation_time=935.33ms, emitting_time=214.88µs, time_calculating_group_ids=2.02s, reduction_factor=60% (7.90 M/13.17 M)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[ClientIP, IsRefresh, ResolutionWidth, SearchEngineID], file_type=liquid_parquet, metrics=[output_rows=13.17 M, elapsed_compute=16ns, output_bytes=127.0 MB, output_batches=12.14 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=625.4 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.56ms, metadata_load_time=239.21ms, page_index_eval_time=2.83µs, row_pushdown_eval_time=32ns, statistics_eval_time=499.90µs, time_elapsed_opening=276.93ms, time_elapsed_processing=6.14s, time_elapsed_scanning_total=9.42s, time_elapsed_scanning_until_data=399.86ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=1631MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=24436
+  Misses: cache_miss=12218
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 821ms
+
++----------------+-------------+------+---------------------+---------------------------+
+| SearchEngineID | ClientIP    | c    | sum(hits.IsRefresh) | avg(hits.ResolutionWidth) |
++----------------+-------------+------+---------------------+---------------------------+
+| 2              | 1138507705  | 1633 | 35                  | 1408.0122473974282        |
+| 2              | 1740861572  | 1331 | 28                  | 1577.945905334335         |
+| 2              | -807147100  | 1144 | 35                  | 1553.1984265734266        |
+| 2              | -497906719  | 1140 | 36                  | 1543.4140350877192        |
+| 2              | -1945757555 | 1105 | 30                  | 1557.387330316742         |
+| 2              | -1870623097 | 1102 | 31                  | 1555.6588021778584        |
+| 2              | -631062503  | 1083 | 31                  | 1581.8171745152354        |
+| 2              | -465813166  | 1082 | 30                  | 1541.253234750462         |
+| 2              | -1743596151 | 1080 | 24                  | 1559.8092592592593        |
+| 2              | -1125673878 | 1058 | 22                  | 1587.0                    |
++----------------+-------------+------+---------------------+---------------------------+
+
+=== EXPLAIN ANALYZE (Query 30, Iteration 1) ===
+SortPreservingMergeExec: [c@2 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=8.11µs, output_bytes=300.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[c@2 DESC], preserve_partitioning=[true], filter=[c@2 IS NULL OR c@2 > 585], metrics=[output_rows=76, elapsed_compute=17.18ms, output_bytes=2.2 KB, output_batches=15, row_replacements=127]
+    ProjectionExec: expr=[SearchEngineID@0 as SearchEngineID, ClientIP@1 as ClientIP, count(Int64(1))@2 as c, sum(hits.IsRefresh)@3 as sum(hits.IsRefresh), avg(hits.ResolutionWidth)@4 as avg(hits.ResolutionWidth)], metrics=[output_rows=5.73 M, elapsed_compute=1.62ms, output_bytes=10.3 GB, output_batches=704, expr_0_eval_time=174.20µs, expr_1_eval_time=110.75µs, expr_2_eval_time=77.89µs, expr_3_eval_time=63.42µs, expr_4_eval_time=71.11µs]
+      AggregateExec: mode=FinalPartitioned, gby=[SearchEngineID@0 as SearchEngineID, ClientIP@1 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=5.73 M, elapsed_compute=1.61s, output_bytes=10.3 GB, output_batches=704, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=741.3 M, aggregate_arguments_time=2.17ms, aggregation_time=832.25ms, emitting_time=26.27ms, time_calculating_group_ids=1.11s]
+        RepartitionExec: partitioning=Hash([SearchEngineID@0, ClientIP@1], 16), input_partitions=16, metrics=[output_rows=7.90 M, elapsed_compute=88.00ms, output_bytes=289.8 MB, output_batches=976, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=8.45s, repartition_time=305.92ms, send_time=412.27ms]
+          AggregateExec: mode=Partial, gby=[SearchEngineID@3 as SearchEngineID, ClientIP@0 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=7.90 M, elapsed_compute=2.24s, output_bytes=25.6 GB, output_batches=974, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=522.3 M, aggregate_arguments_time=71.84ms, aggregation_time=719.33ms, emitting_time=178.63µs, time_calculating_group_ids=1.74s, reduction_factor=60% (7.90 M/13.17 M)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[ClientIP, IsRefresh, ResolutionWidth, SearchEngineID], file_type=liquid_parquet, metrics=[output_rows=13.17 M, elapsed_compute=16ns, output_bytes=127.0 MB, output_batches=12.14 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=659.2 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.21ms, metadata_load_time=2.79ms, page_index_eval_time=2.60µs, row_pushdown_eval_time=32ns, statistics_eval_time=376.40µs, time_elapsed_opening=7.67ms, time_elapsed_processing=5.43s, time_elapsed_scanning_total=8.43s, time_elapsed_scanning_until_data=189.78ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=1631MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=12218
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 706ms
+
++----------------+-------------+------+---------------------+---------------------------+
+| SearchEngineID | ClientIP    | c    | sum(hits.IsRefresh) | avg(hits.ResolutionWidth) |
++----------------+-------------+------+---------------------+---------------------------+
+| 2              | 1138507705  | 1633 | 35                  | 1408.0122473974282        |
+| 2              | 1740861572  | 1331 | 28                  | 1577.945905334335         |
+| 2              | -807147100  | 1144 | 35                  | 1553.1984265734266        |
+| 2              | -497906719  | 1140 | 36                  | 1543.4140350877192        |
+| 2              | -1945757555 | 1105 | 30                  | 1557.387330316742         |
+| 2              | -1870623097 | 1102 | 31                  | 1555.6588021778584        |
+| 2              | -631062503  | 1083 | 31                  | 1581.8171745152354        |
+| 2              | -465813166  | 1082 | 30                  | 1541.253234750462         |
+| 2              | -1743596151 | 1080 | 24                  | 1559.8092592592593        |
+| 2              | -1125673878 | 1058 | 22                  | 1587.0                    |
++----------------+-------------+------+---------------------+---------------------------+
+
+=== EXPLAIN ANALYZE (Query 30, Iteration 2) ===
+SortPreservingMergeExec: [c@2 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=8.16µs, output_bytes=300.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[c@2 DESC], preserve_partitioning=[true], filter=[c@2 IS NULL OR c@2 > 585], metrics=[output_rows=97, elapsed_compute=18.22ms, output_bytes=2.8 KB, output_batches=15, row_replacements=158]
+    ProjectionExec: expr=[SearchEngineID@0 as SearchEngineID, ClientIP@1 as ClientIP, count(Int64(1))@2 as c, sum(hits.IsRefresh)@3 as sum(hits.IsRefresh), avg(hits.ResolutionWidth)@4 as avg(hits.ResolutionWidth)], metrics=[output_rows=5.73 M, elapsed_compute=1.44ms, output_bytes=10.3 GB, output_batches=704, expr_0_eval_time=150.12µs, expr_1_eval_time=85.08µs, expr_2_eval_time=102.16µs, expr_3_eval_time=56.12µs, expr_4_eval_time=62.89µs]
+      AggregateExec: mode=FinalPartitioned, gby=[SearchEngineID@0 as SearchEngineID, ClientIP@1 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=5.73 M, elapsed_compute=1.59s, output_bytes=10.3 GB, output_batches=704, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=741.3 M, aggregate_arguments_time=2.28ms, aggregation_time=789.01ms, emitting_time=25.94ms, time_calculating_group_ids=1.12s]
+        RepartitionExec: partitioning=Hash([SearchEngineID@0, ClientIP@1], 16), input_partitions=16, metrics=[output_rows=7.90 M, elapsed_compute=89.16ms, output_bytes=289.8 MB, output_batches=976, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=8.41s, repartition_time=291.76ms, send_time=438.22ms]
+          AggregateExec: mode=Partial, gby=[SearchEngineID@3 as SearchEngineID, ClientIP@0 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=7.90 M, elapsed_compute=2.27s, output_bytes=25.6 GB, output_batches=974, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=522.3 M, aggregate_arguments_time=73.19ms, aggregation_time=782.31ms, emitting_time=202.41µs, time_calculating_group_ids=1.73s, reduction_factor=60% (7.90 M/13.17 M)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[ClientIP, IsRefresh, ResolutionWidth, SearchEngineID], file_type=liquid_parquet, metrics=[output_rows=13.17 M, elapsed_compute=16ns, output_bytes=127.0 MB, output_batches=12.14 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=659.2 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.35ms, metadata_load_time=2.39ms, page_index_eval_time=3.81µs, row_pushdown_eval_time=32ns, statistics_eval_time=392.95µs, time_elapsed_opening=7.25ms, time_elapsed_processing=5.40s, time_elapsed_scanning_total=8.40s, time_elapsed_scanning_until_data=142.04ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=1631MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=12218
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 710ms
+
++----------------+-------------+------+---------------------+---------------------------+
+| SearchEngineID | ClientIP    | c    | sum(hits.IsRefresh) | avg(hits.ResolutionWidth) |
++----------------+-------------+------+---------------------+---------------------------+
+| 2              | 1138507705  | 1633 | 35                  | 1408.0122473974282        |
+| 2              | 1740861572  | 1331 | 28                  | 1577.945905334335         |
+| 2              | -807147100  | 1144 | 35                  | 1553.1984265734266        |
+| 2              | -497906719  | 1140 | 36                  | 1543.4140350877192        |
+| 2              | -1945757555 | 1105 | 30                  | 1557.387330316742         |
+| 2              | -1870623097 | 1102 | 31                  | 1555.6588021778584        |
+| 2              | -631062503  | 1083 | 31                  | 1581.8171745152354        |
+| 2              | -465813166  | 1082 | 30                  | 1541.253234750462         |
+| 2              | -1743596151 | 1080 | 24                  | 1559.8092592592593        |
+| 2              | -1125673878 | 1058 | 22                  | 1587.0                    |
++----------------+-------------+------+---------------------+---------------------------+
+
+=== EXPLAIN ANALYZE (Query 30, Iteration 3) ===
+SortPreservingMergeExec: [c@2 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=7.64µs, output_bytes=300.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[c@2 DESC], preserve_partitioning=[true], filter=[c@2 IS NULL OR c@2 > 585], metrics=[output_rows=109, elapsed_compute=18.75ms, output_bytes=3.2 KB, output_batches=16, row_replacements=209]
+    ProjectionExec: expr=[SearchEngineID@0 as SearchEngineID, ClientIP@1 as ClientIP, count(Int64(1))@2 as c, sum(hits.IsRefresh)@3 as sum(hits.IsRefresh), avg(hits.ResolutionWidth)@4 as avg(hits.ResolutionWidth)], metrics=[output_rows=5.73 M, elapsed_compute=1.59ms, output_bytes=10.3 GB, output_batches=704, expr_0_eval_time=144.34µs, expr_1_eval_time=87.68µs, expr_2_eval_time=78.84µs, expr_3_eval_time=62.58µs, expr_4_eval_time=72.52µs]
+      AggregateExec: mode=FinalPartitioned, gby=[SearchEngineID@0 as SearchEngineID, ClientIP@1 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=5.73 M, elapsed_compute=1.52s, output_bytes=10.3 GB, output_batches=704, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=741.3 M, aggregate_arguments_time=2.29ms, aggregation_time=767.59ms, emitting_time=24.41ms, time_calculating_group_ids=1.06s]
+        RepartitionExec: partitioning=Hash([SearchEngineID@0, ClientIP@1], 16), input_partitions=16, metrics=[output_rows=7.90 M, elapsed_compute=86.47ms, output_bytes=289.8 MB, output_batches=976, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=8.63s, repartition_time=260.95ms, send_time=356.27ms]
+          AggregateExec: mode=Partial, gby=[SearchEngineID@3 as SearchEngineID, ClientIP@0 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=7.90 M, elapsed_compute=2.46s, output_bytes=25.6 GB, output_batches=974, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=522.3 M, aggregate_arguments_time=84.59ms, aggregation_time=862.03ms, emitting_time=218.01µs, time_calculating_group_ids=1.86s, reduction_factor=60% (7.90 M/13.17 M)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[ClientIP, IsRefresh, ResolutionWidth, SearchEngineID], file_type=liquid_parquet, metrics=[output_rows=13.17 M, elapsed_compute=16ns, output_bytes=127.0 MB, output_batches=12.14 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=659.2 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.54ms, metadata_load_time=2.75ms, page_index_eval_time=3.93µs, row_pushdown_eval_time=32ns, statistics_eval_time=444.89µs, time_elapsed_opening=7.84ms, time_elapsed_processing=5.58s, time_elapsed_scanning_total=8.61s, time_elapsed_scanning_until_data=162.17ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=1631MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=12218
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 728ms
+
++----------------+-------------+------+---------------------+---------------------------+
+| SearchEngineID | ClientIP    | c    | sum(hits.IsRefresh) | avg(hits.ResolutionWidth) |
++----------------+-------------+------+---------------------+---------------------------+
+| 2              | 1138507705  | 1633 | 35                  | 1408.0122473974282        |
+| 2              | 1740861572  | 1331 | 28                  | 1577.945905334335         |
+| 2              | -807147100  | 1144 | 35                  | 1553.1984265734266        |
+| 2              | -497906719  | 1140 | 36                  | 1543.4140350877192        |
+| 2              | -1945757555 | 1105 | 30                  | 1557.387330316742         |
+| 2              | -1870623097 | 1102 | 31                  | 1555.6588021778584        |
+| 2              | -631062503  | 1083 | 31                  | 1581.8171745152354        |
+| 2              | -465813166  | 1082 | 30                  | 1541.253234750462         |
+| 2              | -1743596151 | 1080 | 24                  | 1559.8092592592593        |
+| 2              | -1125673878 | 1058 | 22                  | 1587.0                    |
++----------------+-------------+------+---------------------+---------------------------+
+
+=== EXPLAIN ANALYZE (Query 30, Iteration 4) ===
+SortPreservingMergeExec: [c@2 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=7.34µs, output_bytes=300.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[c@2 DESC], preserve_partitioning=[true], filter=[c@2 IS NULL OR c@2 > 585], metrics=[output_rows=96, elapsed_compute=18.18ms, output_bytes=2.8 KB, output_batches=16, row_replacements=203]
+    ProjectionExec: expr=[SearchEngineID@0 as SearchEngineID, ClientIP@1 as ClientIP, count(Int64(1))@2 as c, sum(hits.IsRefresh)@3 as sum(hits.IsRefresh), avg(hits.ResolutionWidth)@4 as avg(hits.ResolutionWidth)], metrics=[output_rows=5.73 M, elapsed_compute=1.42ms, output_bytes=10.3 GB, output_batches=704, expr_0_eval_time=139.18µs, expr_1_eval_time=81.64µs, expr_2_eval_time=67.75µs, expr_3_eval_time=61.68µs, expr_4_eval_time=61.68µs]
+      AggregateExec: mode=FinalPartitioned, gby=[SearchEngineID@0 as SearchEngineID, ClientIP@1 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=5.73 M, elapsed_compute=1.64s, output_bytes=10.3 GB, output_batches=704, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=741.3 M, aggregate_arguments_time=2.34ms, aggregation_time=807.74ms, emitting_time=24.84ms, time_calculating_group_ids=1.16s]
+        RepartitionExec: partitioning=Hash([SearchEngineID@0, ClientIP@1], 16), input_partitions=16, metrics=[output_rows=7.90 M, elapsed_compute=90.67ms, output_bytes=289.8 MB, output_batches=976, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=8.62s, repartition_time=305.98ms, send_time=473.19ms]
+          AggregateExec: mode=Partial, gby=[SearchEngineID@3 as SearchEngineID, ClientIP@0 as ClientIP], aggr=[count(Int64(1)), sum(hits.IsRefresh), avg(hits.ResolutionWidth)], metrics=[output_rows=7.90 M, elapsed_compute=2.36s, output_bytes=25.6 GB, output_batches=974, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=522.3 M, aggregate_arguments_time=75.71ms, aggregation_time=821.87ms, emitting_time=163.58µs, time_calculating_group_ids=1.79s, reduction_factor=60% (7.90 M/13.17 M)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[ClientIP, IsRefresh, ResolutionWidth, SearchEngineID], file_type=liquid_parquet, metrics=[output_rows=13.17 M, elapsed_compute=16ns, output_bytes=127.0 MB, output_batches=12.14 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=659.2 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=4.27ms, metadata_load_time=3.19ms, page_index_eval_time=3.28µs, row_pushdown_eval_time=32ns, statistics_eval_time=461.44µs, time_elapsed_opening=10.90ms, time_elapsed_processing=5.52s, time_elapsed_scanning_total=8.60s, time_elapsed_scanning_until_data=153.72ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=1631MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=12218
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 717ms
+
++----------------+-------------+------+---------------------+---------------------------+
+| SearchEngineID | ClientIP    | c    | sum(hits.IsRefresh) | avg(hits.ResolutionWidth) |
++----------------+-------------+------+---------------------+---------------------------+
+| 2              | 1138507705  | 1633 | 35                  | 1408.0122473974282        |
+| 2              | 1740861572  | 1331 | 28                  | 1577.945905334335         |
+| 2              | -807147100  | 1144 | 35                  | 1553.1984265734266        |
+| 2              | -497906719  | 1140 | 36                  | 1543.4140350877192        |
+| 2              | -1945757555 | 1105 | 30                  | 1557.387330316742         |
+| 2              | -1870623097 | 1102 | 31                  | 1555.6588021778584        |
+| 2              | -631062503  | 1083 | 31                  | 1581.8171745152354        |
+| 2              | -465813166  | 1082 | 30                  | 1541.253234750462         |
+| 2              | -1743596151 | 1080 | 24                  | 1559.8092592592593        |
+| 2              | -1125673878 | 1058 | 22                  | 1587.0                    |
++----------------+-------------+------+---------------------+---------------------------+

@@ -1,0 +1,155 @@
+
+=== EXPLAIN ANALYZE (Query 37, Iteration 0) ===
+SortPreservingMergeExec: [pageviews@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=5.48µs, output_bytes=603.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[pageviews@1 DESC], preserve_partitioning=[true], filter=[pageviews@1 IS NULL OR pageviews@1 > 217], metrics=[output_rows=119, elapsed_compute=1.30ms, output_bytes=7.9 KB, output_batches=16, row_replacements=157]
+    ProjectionExec: expr=[Title@0 as Title, count(Int64(1))@1 as pageviews], metrics=[output_rows=42.16 K, elapsed_compute=54.94µs, output_bytes=4.6 MB, output_batches=16, expr_0_eval_time=9.82µs, expr_1_eval_time=2.45µs]
+      AggregateExec: mode=FinalPartitioned, gby=[Title@0 as Title], aggr=[count(Int64(1))], metrics=[output_rows=42.16 K, elapsed_compute=46.50ms, output_bytes=4.6 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=14.28 M, aggregate_arguments_time=30.46µs, aggregation_time=225.22µs, emitting_time=91.66µs, time_calculating_group_ids=44.54ms]
+        RepartitionExec: partitioning=Hash([Title@0], 16), input_partitions=16, metrics=[output_rows=44.80 K, elapsed_compute=13.60ms, output_bytes=4.4 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=435.14ms, repartition_time=1.35ms, send_time=69.00µs]
+          AggregateExec: mode=Partial, gby=[Title@0 as Title], aggr=[count(Int64(1))], metrics=[output_rows=44.80 K, elapsed_compute=17.26ms, output_bytes=26.1 MB, output_batches=7, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=8.95 M, aggregate_arguments_time=351.29µs, aggregation_time=683.02µs, emitting_time=8.03µs, time_calculating_group_ids=16.05ms, reduction_factor=6.8% (44.80 K/660.3 K)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[Title], file_type=liquid_parquet, metrics=[output_rows=660.3 K, elapsed_compute=16ns, output_bytes=40.8 MB, output_batches=92, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=17.54 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=660.3 K, pushdown_rows_pruned=11.18 K, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=142.30µs, metadata_load_time=235.00ms, page_index_eval_time=2.71µs, row_pushdown_eval_time=754.10µs, statistics_eval_time=860.25µs, time_elapsed_opening=270.20ms, time_elapsed_processing=197.44ms, time_elapsed_scanning_total=164.63ms, time_elapsed_scanning_until_data=27.48ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=688, mem=13MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=896
+  Misses: cache_miss=172
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 124ms
+
++----------------------------------------------------------------------+-----------+
+| Title                                                                | pageviews |
++----------------------------------------------------------------------+-----------+
+| Тест (Россия) - Яндекс                                               | 122407    |
+| Шарарай), Выбрать! - обсуждаются на голд: Шоубиз - Свободная историс | 82935     |
+| Приморск - IRR.ru                                                    | 80958     |
+| Брюки New Era H (Асус) 258 общая выплаток, горшечными                | 39098     |
+| Теплоску на                                                          | 23123     |
+| Dave and Hotpoint sport – самые вещие                                | 14329     |
+| AUTO.ria.ua ™ - Аппер                                                | 14053     |
+| Приморск (Россия) - Яндекс.Видео                                     | 13912     |
+| OWAProfessign), продать                                              | 10919     |
+| Труси - Шоубиз                                                       | 10157     |
++----------------------------------------------------------------------+-----------+
+
+=== EXPLAIN ANALYZE (Query 37, Iteration 1) ===
+SortPreservingMergeExec: [pageviews@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=6.44µs, output_bytes=603.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[pageviews@1 DESC], preserve_partitioning=[true], filter=[pageviews@1 IS NULL OR pageviews@1 > 217], metrics=[output_rows=97, elapsed_compute=649.67µs, output_bytes=6.3 KB, output_batches=16, row_replacements=124]
+    ProjectionExec: expr=[Title@0 as Title, count(Int64(1))@1 as pageviews], metrics=[output_rows=42.16 K, elapsed_compute=34.60µs, output_bytes=4.6 MB, output_batches=16, expr_0_eval_time=7.87µs, expr_1_eval_time=1.33µs]
+      AggregateExec: mode=FinalPartitioned, gby=[Title@0 as Title], aggr=[count(Int64(1))], metrics=[output_rows=42.16 K, elapsed_compute=7.18ms, output_bytes=4.6 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=14.28 M, aggregate_arguments_time=20.45µs, aggregation_time=141.56µs, emitting_time=61.95µs, time_calculating_group_ids=6.79ms]
+        RepartitionExec: partitioning=Hash([Title@0], 16), input_partitions=16, metrics=[output_rows=44.80 K, elapsed_compute=1.12ms, output_bytes=4.4 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=94.39ms, repartition_time=1.30ms, send_time=60.39µs]
+          AggregateExec: mode=Partial, gby=[Title@0 as Title], aggr=[count(Int64(1))], metrics=[output_rows=44.80 K, elapsed_compute=16.87ms, output_bytes=26.1 MB, output_batches=7, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=8.95 M, aggregate_arguments_time=158.86µs, aggregation_time=518.93µs, emitting_time=5.12µs, time_calculating_group_ids=16.05ms, reduction_factor=6.8% (44.80 K/660.3 K)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[Title], file_type=liquid_parquet, metrics=[output_rows=660.3 K, elapsed_compute=16ns, output_bytes=40.8 MB, output_batches=92, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=17.54 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=660.3 K, pushdown_rows_pruned=11.18 K, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=172.35µs, metadata_load_time=2.94ms, page_index_eval_time=2.96µs, row_pushdown_eval_time=775.35µs, statistics_eval_time=737.30µs, time_elapsed_opening=6.90ms, time_elapsed_processing=73.64ms, time_elapsed_scanning_total=87.33ms, time_elapsed_scanning_until_data=10.64ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=688, mem=13MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=724
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 79ms
+
++----------------------------------------------------------------------+-----------+
+| Title                                                                | pageviews |
++----------------------------------------------------------------------+-----------+
+| Тест (Россия) - Яндекс                                               | 122407    |
+| Шарарай), Выбрать! - обсуждаются на голд: Шоубиз - Свободная историс | 82935     |
+| Приморск - IRR.ru                                                    | 80958     |
+| Брюки New Era H (Асус) 258 общая выплаток, горшечными                | 39098     |
+| Теплоску на                                                          | 23123     |
+| Dave and Hotpoint sport – самые вещие                                | 14329     |
+| AUTO.ria.ua ™ - Аппер                                                | 14053     |
+| Приморск (Россия) - Яндекс.Видео                                     | 13912     |
+| OWAProfessign), продать                                              | 10919     |
+| Труси - Шоубиз                                                       | 10157     |
++----------------------------------------------------------------------+-----------+
+
+=== EXPLAIN ANALYZE (Query 37, Iteration 2) ===
+SortPreservingMergeExec: [pageviews@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=5.92µs, output_bytes=603.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[pageviews@1 DESC], preserve_partitioning=[true], filter=[pageviews@1 IS NULL OR pageviews@1 > 217], metrics=[output_rows=96, elapsed_compute=870.26µs, output_bytes=6.4 KB, output_batches=16, row_replacements=184]
+    ProjectionExec: expr=[Title@0 as Title, count(Int64(1))@1 as pageviews], metrics=[output_rows=42.16 K, elapsed_compute=35.01µs, output_bytes=4.6 MB, output_batches=16, expr_0_eval_time=7.49µs, expr_1_eval_time=1.90µs]
+      AggregateExec: mode=FinalPartitioned, gby=[Title@0 as Title], aggr=[count(Int64(1))], metrics=[output_rows=42.16 K, elapsed_compute=6.96ms, output_bytes=4.6 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=14.28 M, aggregate_arguments_time=19.88µs, aggregation_time=140.82µs, emitting_time=56.06µs, time_calculating_group_ids=6.58ms]
+        RepartitionExec: partitioning=Hash([Title@0], 16), input_partitions=16, metrics=[output_rows=44.80 K, elapsed_compute=1.09ms, output_bytes=4.4 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=94.63ms, repartition_time=1.34ms, send_time=62.94µs]
+          AggregateExec: mode=Partial, gby=[Title@0 as Title], aggr=[count(Int64(1))], metrics=[output_rows=44.80 K, elapsed_compute=16.66ms, output_bytes=26.1 MB, output_batches=7, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=8.95 M, aggregate_arguments_time=156.34µs, aggregation_time=516.99µs, emitting_time=5.43µs, time_calculating_group_ids=15.85ms, reduction_factor=6.8% (44.80 K/660.3 K)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[Title], file_type=liquid_parquet, metrics=[output_rows=660.3 K, elapsed_compute=16ns, output_bytes=40.8 MB, output_batches=92, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=17.54 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=660.3 K, pushdown_rows_pruned=11.18 K, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=190.90µs, metadata_load_time=3.37ms, page_index_eval_time=2.87µs, row_pushdown_eval_time=762.53µs, statistics_eval_time=804.24µs, time_elapsed_opening=7.59ms, time_elapsed_processing=74.01ms, time_elapsed_scanning_total=86.88ms, time_elapsed_scanning_until_data=10.27ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=688, mem=13MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=724
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 79ms
+
++----------------------------------------------------------------------+-----------+
+| Title                                                                | pageviews |
++----------------------------------------------------------------------+-----------+
+| Тест (Россия) - Яндекс                                               | 122407    |
+| Шарарай), Выбрать! - обсуждаются на голд: Шоубиз - Свободная историс | 82935     |
+| Приморск - IRR.ru                                                    | 80958     |
+| Брюки New Era H (Асус) 258 общая выплаток, горшечными                | 39098     |
+| Теплоску на                                                          | 23123     |
+| Dave and Hotpoint sport – самые вещие                                | 14329     |
+| AUTO.ria.ua ™ - Аппер                                                | 14053     |
+| Приморск (Россия) - Яндекс.Видео                                     | 13912     |
+| OWAProfessign), продать                                              | 10919     |
+| Труси - Шоубиз                                                       | 10157     |
++----------------------------------------------------------------------+-----------+
+
+=== EXPLAIN ANALYZE (Query 37, Iteration 3) ===
+SortPreservingMergeExec: [pageviews@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=5.74µs, output_bytes=603.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[pageviews@1 DESC], preserve_partitioning=[true], filter=[pageviews@1 IS NULL OR pageviews@1 > 217], metrics=[output_rows=81, elapsed_compute=688.15µs, output_bytes=5.6 KB, output_batches=16, row_replacements=125]
+    ProjectionExec: expr=[Title@0 as Title, count(Int64(1))@1 as pageviews], metrics=[output_rows=42.16 K, elapsed_compute=38.84µs, output_bytes=4.6 MB, output_batches=16, expr_0_eval_time=10.55µs, expr_1_eval_time=1.31µs]
+      AggregateExec: mode=FinalPartitioned, gby=[Title@0 as Title], aggr=[count(Int64(1))], metrics=[output_rows=42.16 K, elapsed_compute=5.66ms, output_bytes=4.6 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=14.28 M, aggregate_arguments_time=19.92µs, aggregation_time=139.21µs, emitting_time=64.12µs, time_calculating_group_ids=5.28ms]
+        RepartitionExec: partitioning=Hash([Title@0], 16), input_partitions=16, metrics=[output_rows=44.80 K, elapsed_compute=993.92µs, output_bytes=4.4 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=94.21ms, repartition_time=1.36ms, send_time=59.73µs]
+          AggregateExec: mode=Partial, gby=[Title@0 as Title], aggr=[count(Int64(1))], metrics=[output_rows=44.80 K, elapsed_compute=16.75ms, output_bytes=26.1 MB, output_batches=7, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=8.95 M, aggregate_arguments_time=157.49µs, aggregation_time=523.78µs, emitting_time=5.00µs, time_calculating_group_ids=15.92ms, reduction_factor=6.8% (44.80 K/660.3 K)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[Title], file_type=liquid_parquet, metrics=[output_rows=660.3 K, elapsed_compute=16ns, output_bytes=40.8 MB, output_batches=92, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=17.54 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=660.3 K, pushdown_rows_pruned=11.18 K, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=142.31µs, metadata_load_time=3.15ms, page_index_eval_time=3.03µs, row_pushdown_eval_time=760.79µs, statistics_eval_time=782.69µs, time_elapsed_opening=7.48ms, time_elapsed_processing=73.58ms, time_elapsed_scanning_total=86.55ms, time_elapsed_scanning_until_data=10.26ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=688, mem=13MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=724
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 80ms
+
++----------------------------------------------------------------------+-----------+
+| Title                                                                | pageviews |
++----------------------------------------------------------------------+-----------+
+| Тест (Россия) - Яндекс                                               | 122407    |
+| Шарарай), Выбрать! - обсуждаются на голд: Шоубиз - Свободная историс | 82935     |
+| Приморск - IRR.ru                                                    | 80958     |
+| Брюки New Era H (Асус) 258 общая выплаток, горшечными                | 39098     |
+| Теплоску на                                                          | 23123     |
+| Dave and Hotpoint sport – самые вещие                                | 14329     |
+| AUTO.ria.ua ™ - Аппер                                                | 14053     |
+| Приморск (Россия) - Яндекс.Видео                                     | 13912     |
+| OWAProfessign), продать                                              | 10919     |
+| Труси - Шоубиз                                                       | 10157     |
++----------------------------------------------------------------------+-----------+
+
+=== EXPLAIN ANALYZE (Query 37, Iteration 4) ===
+SortPreservingMergeExec: [pageviews@1 DESC], fetch=10, metrics=[output_rows=10, elapsed_compute=5.84µs, output_bytes=603.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[pageviews@1 DESC], preserve_partitioning=[true], filter=[pageviews@1 IS NULL OR pageviews@1 > 217], metrics=[output_rows=100, elapsed_compute=877.62µs, output_bytes=6.7 KB, output_batches=16, row_replacements=201]
+    ProjectionExec: expr=[Title@0 as Title, count(Int64(1))@1 as pageviews], metrics=[output_rows=42.16 K, elapsed_compute=37.58µs, output_bytes=4.6 MB, output_batches=16, expr_0_eval_time=9.77µs, expr_1_eval_time=2.43µs]
+      AggregateExec: mode=FinalPartitioned, gby=[Title@0 as Title], aggr=[count(Int64(1))], metrics=[output_rows=42.16 K, elapsed_compute=4.57ms, output_bytes=4.6 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=14.28 M, aggregate_arguments_time=19.29µs, aggregation_time=117.40µs, emitting_time=63.25µs, time_calculating_group_ids=4.22ms]
+        RepartitionExec: partitioning=Hash([Title@0], 16), input_partitions=16, metrics=[output_rows=44.80 K, elapsed_compute=1.26ms, output_bytes=4.4 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=94.36ms, repartition_time=1.34ms, send_time=72.76µs]
+          AggregateExec: mode=Partial, gby=[Title@0 as Title], aggr=[count(Int64(1))], metrics=[output_rows=44.80 K, elapsed_compute=17.28ms, output_bytes=26.1 MB, output_batches=7, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=8.95 M, aggregate_arguments_time=179.28µs, aggregation_time=597.49µs, emitting_time=4.93µs, time_calculating_group_ids=16.36ms, reduction_factor=6.8% (44.80 K/660.3 K)]
+            DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[Title], file_type=liquid_parquet, metrics=[output_rows=660.3 K, elapsed_compute=16ns, output_bytes=40.8 MB, output_batches=92, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=17.54 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=660.3 K, pushdown_rows_pruned=11.18 K, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=152.54µs, metadata_load_time=2.88ms, page_index_eval_time=2.78µs, row_pushdown_eval_time=764.39µs, statistics_eval_time=728.70µs, time_elapsed_opening=6.90ms, time_elapsed_processing=73.56ms, time_elapsed_scanning_total=87.30ms, time_elapsed_scanning_until_data=9.90ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=688, mem=13MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=724
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 79ms
+
++----------------------------------------------------------------------+-----------+
+| Title                                                                | pageviews |
++----------------------------------------------------------------------+-----------+
+| Тест (Россия) - Яндекс                                               | 122407    |
+| Шарарай), Выбрать! - обсуждаются на голд: Шоубиз - Свободная историс | 82935     |
+| Приморск - IRR.ru                                                    | 80958     |
+| Брюки New Era H (Асус) 258 общая выплаток, горшечными                | 39098     |
+| Теплоску на                                                          | 23123     |
+| Dave and Hotpoint sport – самые вещие                                | 14329     |
+| AUTO.ria.ua ™ - Аппер                                                | 14053     |
+| Приморск (Россия) - Яндекс.Видео                                     | 13912     |
+| OWAProfessign), продать                                              | 10919     |
+| Труси - Шоубиз                                                       | 10157     |
++----------------------------------------------------------------------+-----------+

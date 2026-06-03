@@ -1,0 +1,85 @@
+
+=== EXPLAIN ANALYZE (Query 0, Iteration 0) ===
+ProjectionExec: expr=[99997497 as count(*)], metrics=[output_rows=1, elapsed_compute=2.00µs, output_bytes=8.0 B, output_batches=1, expr_0_eval_time=971ns]
+  PlaceholderRowExec, metrics=[]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 10ms
+
++----------+
+| count(*) |
++----------+
+| 99997497 |
++----------+
+
+=== EXPLAIN ANALYZE (Query 0, Iteration 1) ===
+ProjectionExec: expr=[99997497 as count(*)], metrics=[output_rows=1, elapsed_compute=970ns, output_bytes=8.0 B, output_batches=1, expr_0_eval_time=430ns]
+  PlaceholderRowExec, metrics=[]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 0ms
+
++----------+
+| count(*) |
++----------+
+| 99997497 |
++----------+
+
+=== EXPLAIN ANALYZE (Query 0, Iteration 2) ===
+ProjectionExec: expr=[99997497 as count(*)], metrics=[output_rows=1, elapsed_compute=1.00µs, output_bytes=8.0 B, output_batches=1, expr_0_eval_time=450ns]
+  PlaceholderRowExec, metrics=[]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 0ms
+
++----------+
+| count(*) |
++----------+
+| 99997497 |
++----------+
+
+=== EXPLAIN ANALYZE (Query 0, Iteration 3) ===
+ProjectionExec: expr=[99997497 as count(*)], metrics=[output_rows=1, elapsed_compute=990ns, output_bytes=8.0 B, output_batches=1, expr_0_eval_time=450ns]
+  PlaceholderRowExec, metrics=[]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 0ms
+
++----------+
+| count(*) |
++----------+
+| 99997497 |
++----------+
+
+=== EXPLAIN ANALYZE (Query 0, Iteration 4) ===
+ProjectionExec: expr=[99997497 as count(*)], metrics=[output_rows=1, elapsed_compute=1.04µs, output_bytes=8.0 B, output_batches=1, expr_0_eval_time=490ns]
+  PlaceholderRowExec, metrics=[]
+
+Cache: entries=0, mem=0MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=0
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 0ms
+
++----------+
+| count(*) |
++----------+
+| 99997497 |
++----------+

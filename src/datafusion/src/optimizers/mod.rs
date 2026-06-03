@@ -89,6 +89,7 @@ fn try_optimize_parquet_source(
         && let Some((file_scan_config, parquet_source)) =
             data_source_exec.downcast_to_file_source::<ParquetSource>()
     {
+        eprintln!("[LocalModeOptimizer] matched DataSourceExec with ParquetSource, rewriting");
         let mut new_config = file_scan_config.clone();
 
         let mut new_source =
@@ -112,6 +113,7 @@ fn try_optimize_parquet_source(
             TreeNodeRecursion::Continue,
         ));
     }
+    eprintln!("[LocalModeOptimizer] no match: plan={}", plan.name());
     Ok(Transformed::no(plan))
 }
 

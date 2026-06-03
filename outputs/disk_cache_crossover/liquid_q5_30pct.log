@@ -1,0 +1,255 @@
+
+=== EXPLAIN ANALYZE (Query 5, Iteration 0) ===
+CoalescePartitionsExec: fetch=50, metrics=[output_rows=35, elapsed_compute=30.48µs, output_bytes=704.0 B, output_batches=1]
+  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[UserID, RegionID, CounterID], limit=50, file_type=liquid_parquet, metrics=[output_rows=35, elapsed_compute=16ns, output_bytes=704.0 B, output_batches=1, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=3.15 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=35, pushdown_rows_pruned=11, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=240.34µs, metadata_load_time=226.67ms, page_index_eval_time=4.45µs, row_pushdown_eval_time=5.13µs, statistics_eval_time=18.23ms, time_elapsed_opening=376.75ms, time_elapsed_processing=191.21ms, time_elapsed_scanning_total=28.74ms, time_elapsed_scanning_until_data=27.87ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=10, mem=0MB, disk=0MB
+  Hits: cache_hit=2, eval_predicate=7
+  Misses: cache_miss=2
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 266ms
+
++----------------------+----------+-----------+
+| UserID               | RegionID | CounterID |
++----------------------+----------+-----------+
+| -9198080625391903804 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9169641491093342987 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
++----------------------+----------+-----------+
+
+=== EXPLAIN ANALYZE (Query 5, Iteration 1) ===
+CoalescePartitionsExec: fetch=50, metrics=[output_rows=35, elapsed_compute=14.90µs, output_bytes=704.0 B, output_batches=1]
+  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[UserID, RegionID, CounterID], limit=50, file_type=liquid_parquet, metrics=[output_rows=35, elapsed_compute=16ns, output_bytes=704.0 B, output_batches=1, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=2.05 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=35, pushdown_rows_pruned=11, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=223.48µs, metadata_load_time=3.28ms, page_index_eval_time=4.89µs, row_pushdown_eval_time=3.74µs, statistics_eval_time=700.64µs, time_elapsed_opening=7.47ms, time_elapsed_processing=8.73ms, time_elapsed_scanning_total=1.60ms, time_elapsed_scanning_until_data=1.58ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=10, mem=0MB, disk=0MB
+  Hits: cache_hit=2, eval_predicate=5
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 4ms
+
++----------------------+----------+-----------+
+| UserID               | RegionID | CounterID |
++----------------------+----------+-----------+
+| -9198080625391903804 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9169641491093342987 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
++----------------------+----------+-----------+
+
+=== EXPLAIN ANALYZE (Query 5, Iteration 2) ===
+CoalescePartitionsExec: fetch=50, metrics=[output_rows=35, elapsed_compute=12.48µs, output_bytes=704.0 B, output_batches=1]
+  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[UserID, RegionID, CounterID], limit=50, file_type=liquid_parquet, metrics=[output_rows=35, elapsed_compute=16ns, output_bytes=704.0 B, output_batches=1, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=2.05 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=35, pushdown_rows_pruned=11, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=186.74µs, metadata_load_time=3.22ms, page_index_eval_time=4.75µs, row_pushdown_eval_time=2.09µs, statistics_eval_time=682.85µs, time_elapsed_opening=7.10ms, time_elapsed_processing=8.28ms, time_elapsed_scanning_total=1.59ms, time_elapsed_scanning_until_data=1.57ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=10, mem=0MB, disk=0MB
+  Hits: cache_hit=2, eval_predicate=5
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 3ms
+
++----------------------+----------+-----------+
+| UserID               | RegionID | CounterID |
++----------------------+----------+-----------+
+| -9198080625391903804 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9169641491093342987 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
++----------------------+----------+-----------+
+
+=== EXPLAIN ANALYZE (Query 5, Iteration 3) ===
+CoalescePartitionsExec: fetch=50, metrics=[output_rows=35, elapsed_compute=12.46µs, output_bytes=704.0 B, output_batches=1]
+  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[UserID, RegionID, CounterID], limit=50, file_type=liquid_parquet, metrics=[output_rows=35, elapsed_compute=16ns, output_bytes=704.0 B, output_batches=1, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=2.05 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=35, pushdown_rows_pruned=11, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=228.85µs, metadata_load_time=3.25ms, page_index_eval_time=5.01µs, row_pushdown_eval_time=3.00µs, statistics_eval_time=669.71µs, time_elapsed_opening=7.05ms, time_elapsed_processing=8.54ms, time_elapsed_scanning_total=1.74ms, time_elapsed_scanning_until_data=1.73ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=10, mem=0MB, disk=0MB
+  Hits: cache_hit=2, eval_predicate=5
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 3ms
+
++----------------------+----------+-----------+
+| UserID               | RegionID | CounterID |
++----------------------+----------+-----------+
+| -9198080625391903804 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9169641491093342987 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
++----------------------+----------+-----------+
+
+=== EXPLAIN ANALYZE (Query 5, Iteration 4) ===
+CoalescePartitionsExec: fetch=50, metrics=[output_rows=35, elapsed_compute=13.00µs, output_bytes=704.0 B, output_batches=1]
+  DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[UserID, RegionID, CounterID], limit=50, file_type=liquid_parquet, metrics=[output_rows=35, elapsed_compute=16ns, output_bytes=704.0 B, output_batches=1, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 3 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=2.05 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=35, pushdown_rows_pruned=11, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=184.69µs, metadata_load_time=3.37ms, page_index_eval_time=3.78µs, row_pushdown_eval_time=4.27µs, statistics_eval_time=599.92µs, time_elapsed_opening=7.10ms, time_elapsed_processing=8.56ms, time_elapsed_scanning_total=1.72ms, time_elapsed_scanning_until_data=1.70ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=10, mem=0MB, disk=0MB
+  Hits: cache_hit=2, eval_predicate=5
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 3ms
+
++----------------------+----------+-----------+
+| UserID               | RegionID | CounterID |
++----------------------+----------+-----------+
+| -9198080625391903804 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9193011485273158162 | 2        | 62        |
+| -9169641491093342987 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9164706819442030649 | 229      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
+| -9119482473471174352 | 238      | 62        |
++----------------------+----------+-----------+

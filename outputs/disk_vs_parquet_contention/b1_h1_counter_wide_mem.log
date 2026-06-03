@@ -1,0 +1,610 @@
+
+=== EXPLAIN ANALYZE (Query 2, Iteration 0) ===
+ProjectionExec: expr=[CounterID@0 as CounterID, count(*)@1 as count(*), sum(hits.ResolutionWidth)@2 as sum(hits.ResolutionWidth), avg(hits.ClientIP)@3 as avg(hits.ClientIP), min(hits.UserID)@4 as min(hits.UserID), max(hits.UserID)@5 as max(hits.UserID)], metrics=[output_rows=100, elapsed_compute=2.78µs, output_bytes=4.3 KB, output_batches=1, expr_0_eval_time=280ns, expr_1_eval_time=70ns, expr_2_eval_time=160ns, expr_3_eval_time=60ns, expr_4_eval_time=140ns, expr_5_eval_time=70ns]
+  SortPreservingMergeExec: [count(Int64(1))@6 DESC], fetch=100, metrics=[output_rows=100, elapsed_compute=15.58µs, output_bytes=5.1 KB, output_batches=1]
+    SortExec: TopK(fetch=100), expr=[count(*)@1 DESC], preserve_partitioning=[true], filter=[count(*)@1 IS NULL OR count(*)@1 > 1275], metrics=[output_rows=1.60 K, elapsed_compute=61.36ms, output_bytes=81.2 KB, output_batches=16, row_replacements=3.83 K]
+      ProjectionExec: expr=[CounterID@0 as CounterID, count(Int64(1))@1 as count(*), sum(hits.ResolutionWidth)@2 as sum(hits.ResolutionWidth), avg(hits.ClientIP)@3 as avg(hits.ClientIP), min(hits.UserID)@4 as min(hits.UserID), max(hits.UserID)@5 as max(hits.UserID), count(Int64(1))@1 as count(Int64(1))], metrics=[output_rows=6.50 K, elapsed_compute=42.62µs, output_bytes=286.1 KB, output_batches=16, expr_0_eval_time=4.90µs, expr_1_eval_time=1.56µs, expr_2_eval_time=1.81µs, expr_3_eval_time=1.09µs, expr_4_eval_time=971ns, expr_5_eval_time=980ns, expr_6_eval_time=950ns]
+        AggregateExec: mode=FinalPartitioned, gby=[CounterID@0 as CounterID], aggr=[count(Int64(1)), sum(hits.ResolutionWidth), avg(hits.ClientIP), min(hits.UserID), max(hits.UserID)], metrics=[output_rows=6.50 K, elapsed_compute=1.79ms, output_bytes=286.1 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=881.9 K, aggregate_arguments_time=44.30µs, aggregation_time=589.84µs, emitting_time=68.53µs, time_calculating_group_ids=255.24µs]
+          RepartitionExec: partitioning=Hash([CounterID@0], 16), input_partitions=16, metrics=[output_rows=6.74 K, elapsed_compute=17.47ms, output_bytes=6.5 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=6.98s, repartition_time=5.05ms, send_time=254.41µs]
+            AggregateExec: mode=Partial, gby=[CounterID@0 as CounterID], aggr=[count(Int64(1)), sum(hits.ResolutionWidth), avg(hits.ClientIP), min(hits.UserID), max(hits.UserID)], metrics=[output_rows=6.74 K, elapsed_compute=1.28s, output_bytes=494.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=1.63 M, aggregate_arguments_time=140.05ms, aggregation_time=1.57s, emitting_time=111.95µs, time_calculating_group_ids=544.74ms, reduction_factor=0.008% (6.74 K/83.91 M)]
+              DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[CounterID, ClientIP, UserID, ResolutionWidth], file_type=liquid_parquet, metrics=[output_rows=83.91 M, elapsed_compute=16ns, output_bytes=1441.0 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=508.8 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=18.12ms, metadata_load_time=402.89ms, page_index_eval_time=3.18µs, row_pushdown_eval_time=32ns, statistics_eval_time=11.76ms, time_elapsed_opening=526.77ms, time_elapsed_processing=2.41s, time_elapsed_scanning_total=6.45s, time_elapsed_scanning_until_data=384.99ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=24436, mem=383MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=36654
+  Misses: cache_miss=12218
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 804ms
+
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+| CounterID | count(*) | sum(hits.ResolutionWidth) | avg(hits.ClientIP) | min(hits.UserID)     | max(hits.UserID)    |
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+| 199550    | 7008754  | 11000750426               | 526061615.11770093 | -9223346024853429862 | 9223371425449051681 |
+| 3922      | 5361252  | 8393158611                | 597269271.6404972  | -9223178030934747259 | 9223310216978545089 |
+| 105857    | 4177843  | 6673858410                | 570497720.4199646  | -9223140121085850272 | 9223363230269068491 |
+| 46429     | 3584953  | 5433637584                | 615188001.7601932  | -9223361817928421363 | 9223175814720670285 |
+| 122612    | 3542228  | 5367439224                | 542892346.2468649  | -9219567788895632964 | 9223323596402503223 |
+| 244045    | 3306517  | 5031073914                | 538446474.7601129  | -9223357932189777279 | 9223357816360387857 |
+| 225510    | 3205393  | 5171189987                | 562845975.3974967  | -9222586972143858525 | 9223324900102909551 |
+| 178321    | 2628236  | 4018884714                | 565884683.0126575  | -9215921826393574013 | 9223276268586242047 |
+| 245438    | 2446178  | 3584565635                | 577867363.6261944  | -9222028152060881928 | 9223290364457130352 |
+| 233773    | 2230709  | 3530320103                | 626762708.99691    | -9222607364038294503 | 9223328854322062683 |
+| 145496    | 2066529  | 2857655719                | 608215615.9204448  | -9221527730523596121 | 9222905909172755426 |
+| 99062     | 1394978  | 2158584462                | 572460191.2268666  | -9222309912477497029 | 9223325148563768236 |
+| 123906    | 1229349  | 1918969736                | 538507560.6318133  | -9222486292139758092 | 9223353962785668041 |
+| 119677    | 1108082  | 1549383385                | 572581699.2718445  | -9222196182830295817 | 9223370512262829419 |
+| 229540    | 1105062  | 1248220707                | 557994977.7382944  | -9219167411733195992 | 9223352541879458469 |
+| 69154     | 1037673  | 1457269075                | 691754198.8292391  | -9222942943452632831 | 9223121880512945368 |
+| 5822      | 1037577  | 1507330000                | 499031503.6938203  | -9221251372859339681 | 9222683096952890403 |
+| 1483      | 953754   | 1488581113                | 536916264.1378626  | -9222225582324279020 | 9223305987483385459 |
+| 128858    | 918847   | 1455469617                | 574146956.5097519  | -9219909450504070394 | 9223281383228192348 |
+| 190147    | 906972   | 1374284572                | 535717220.3001438  | -9220742289079206593 | 9223337174614582560 |
+| 117917    | 836928   | 1338389339                | 504229164.24259436 | -9221697809726755275 | 9223278921056450441 |
+| 140443    | 800629   | 1171100903                | 603489007.1068972  | -9219107325584650578 | 9222724320443902653 |
+| 7525      | 721310   | 1158645198                | 581026459.2789702  | -9221279140477359784 | 9223283516011928192 |
+| 256004    | 701789   | 1085322762                | 447919161.3892908  | -9222837552450474710 | 9223269811334780822 |
+| 62        | 671519   | 1071539420                | 630213038.1712118  | -9219054275930888834 | 9223258955477571344 |
+| 1095      | 663876   | 1032442903                | 474617708.51855767 | -9220868456983495476 | 9223011030100129785 |
+| 63217     | 654291   | 1035219776                | 528772410.193472   | -9222953906676075492 | 9222917033255998580 |
+| 3035      | 641111   | 880080266                 | 563970979.4483358  | -9222579484431160461 | 9223251115378221328 |
+| 132048    | 634657   | 1009496197                | 576126438.0492487  | -9223360918607336854 | 9223356537478078323 |
+| 95978     | 631537   | 873808435                 | 574827791.3929857  | -9223344277659414581 | 9223161510779360742 |
+| 186300    | 520191   | 828027220                 | 575313984.0301851  | -9222378406364091204 | 9223334595469392411 |
+| 146891    | 480900   | 717791742                 | 590065562.7974756  | -9222031466889386267 | 9222918268856352859 |
+| 226383    | 460241   | 727013898                 | 523767090.92059815 | -9216261718549834226 | 9223364125493659818 |
+| 163373    | 452769   | 497077287                 | 457446963.96624327 | -9223308501352264398 | 9223160689807097605 |
+| 135316    | 445732   | 651929333                 | 579802409.8134013  | -9222379336558706109 | 9223211195852902999 |
+| 190994    | 428332   | 679639468                 | 515716885.29911375 | -9220727380977332871 | 9223180426617519058 |
+| 96948     | 391724   | 608442784                 | 745293039.8965598  | -9219931312368108118 | 9223201849210885423 |
+| 220992    | 349551   | 538733066                 | 189094983.70629466 | -9208815724237318257 | 9222534799014302671 |
+| 56820     | 281653   | 375296949                 | 554983232.7167614  | -9219510007918356923 | 9223073870038724428 |
+| 44779     | 277295   | 431194710                 | 593203648.6582737  | -9219217901786969051 | 9223328267615370523 |
+| 2264      | 276324   | 391971588                 | 521948934.41942793 | -9222506155710409430 | 9223285090807786359 |
+| 180984    | 273749   | 427008951                 | 580176372.805581   | -9220760007512044352 | 9223222157736946805 |
+| 109363    | 271265   | 414988694                 | 620376339.6527492  | -9221464912395316444 | 9223140151779382655 |
+| 95427     | 262650   | 410822557                 | 517374509.42930514 | -9213707126627324353 | 9222268276290908332 |
+| 180215    | 260782   | 387610781                 | 632047524.6783482  | -9222159261305268509 | 9222147231107032881 |
+| 158401    | 259769   | 406253263                 | 508342213.27201474 | -9210545542825040110 | 9221490578562345718 |
+| 76325     | 258995   | 343109586                 | 618927001.7924516  | -9208077693383710261 | 9223057021953036435 |
+| 38        | 258103   | 413124070                 | 595149961.8993309  | -9214751021948998350 | 9222220959557218405 |
+| 121668    | 257995   | 370908672                 | 580115807.37905    | -9223344277659414581 | 9222689430320554375 |
+| 35534     | 256522   | 376698994                 | 528784160.80790734 | -9222533007323865344 | 9223062682422697315 |
+| 77639     | 248260   | 351078600                 | 541498459.4351044  | -9222859610726673510 | 9223222157736946805 |
+| 1060      | 247772   | 384804373                 | 585033197.5597203  | -9222077718927031550 | 9223211410241297629 |
+| 218267    | 233961   | 368402614                 | 545048321.5842171  | -9223140121085850272 | 9223350958296956768 |
+| 188878    | 233739   | 365193582                 | 406666479.1392921  | -9211262286914389340 | 9221202196045095241 |
+| 47290     | 233671   | 342320339                 | 542437377.2895439  | -9223141462922514222 | 9223032176062256297 |
+| 196224    | 227138   | 331809535                 | 498760269.7049503  | -9222684084728389486 | 9223035681241719685 |
+| 137682    | 216572   | 311389552                 | 533244661.57431245 | -9216808781562308452 | 9223156973214784720 |
+| 262004    | 201005   | 306907361                 | 632128976.7129126  | -9221347161997830618 | 9222911160710512740 |
+| 1634      | 198770   | 309726635                 | 581531795.9865171  | -9222055010781338364 | 9222745724455326045 |
+| 67476     | 192977   | 298224992                 | 634859742.6755261  | -9221107724032399225 | 9223195561235600876 |
+| 40206     | 184091   | 272202998                 | 547546116.0964577  | -9219746217193517963 | 9222771265453975771 |
+| 234004    | 177964   | 282622171                 | 469543026.06807554 | -9216692926449687586 | 9222951634718153876 |
+| 222436    | 174704   | 266988513                 | 659994454.560199   | -9179163174697806244 | 9217237690230600656 |
+| 245620    | 167898   | 240772554                 | 543915176.2346485  | -9219998449221996561 | 9222560996351939973 |
+| 40367     | 165495   | 258177160                 | 568977140.3346325  | -9219785195121081235 | 9222710303952416981 |
+| 230962    | 164837   | 234515561                 | 578928853.4509121  | -9222379336558706109 | 9223157625055330559 |
+| 196239    | 161468   | 235774520                 | 558701095.8368593  | -9202062231357422227 | 9222505521277593773 |
+| 148926    | 158710   | 233898313                 | 579088034.5789301  | -9213748710537331905 | 9223274311931800502 |
+| 162968    | 157687   | 247773957                 | 593836197.386132   | -9214471111029935779 | 9221515213529766473 |
+| 136213    | 155562   | 243340088                 | 550933430.8949357  | -9218797936899174875 | 9220939585324330250 |
+| 515       | 144879   | 0                         | 33341751.10080136  | -9212732240587657405 | 9222290370071727009 |
+| 159470    | 140185   | 238573785                 | 557306536.073774   | -9218499312438479990 | 9222114887739180081 |
+| 130273    | 139377   | 192998049                 | 602831358.778127   | -9219614395220980485 | 9223298339261107482 |
+| 220091    | 138483   | 213387663                 | 654889873.9276806  | -9219735935929844681 | 9222821688828331809 |
+| 252592    | 136760   | 210684935                 | 572602114.6053013  | -9217404644865839104 | 9222411929313885660 |
+| 251927    | 136718   | 215071172                 | 633532236.5871136  | -9181222879803742142 | 9222359998224142044 |
+| 256486    | 135019   | 210179679                 | 535204835.3677408  | -9221095754946536745 | 9221987299461560959 |
+| 63621     | 132485   | 201726306                 | 617446311.6710798  | -9218417840239440744 | 9222163720402304581 |
+| 105746    | 130240   | 200596078                 | 615470299.6828164  | -9117195525835474888 | 9217035138177152350 |
+| 97467     | 129996   | 201769662                 | 578246634.2355765  | -9204560739207379089 | 9223295003185418147 |
+| 258631    | 128584   | 91423504                  | 658532551.9637125  | -9219431016831528964 | 9223029612224199235 |
+| 78185     | 123800   | 184493867                 | 29979611.883424878 | -9213947883123536724 | 9220799660714201589 |
+| 191697    | 122125   | 189668884                 | 519751948.9637748  | -9219546544654074167 | 9222866579601096556 |
+| 76265     | 121496   | 177872175                 | 689515745.5183052  | -9208220438662750513 | 9222928859572656776 |
+| 786       | 119548   | 0                         | 549179463.585497   | -9167567564828250761 | 9223145304211283826 |
+| 125255    | 117997   | 157713616                 | 644795864.800961   | -9217166802383061772 | 9221680052571119028 |
+| 4635      | 115131   | 179380443                 | 537991421.0614778  | -9221140058421695091 | 9223181498201031493 |
+| 1830      | 111593   | 0                         | 444188440.95942396 | -9210089414629882110 | 9223011030100129785 |
+| 54312     | 107267   | 171194969                 | 510032548.56372416 | -9205731947124412904 | 9223228885409115872 |
+| 208744    | 103532   | 144676607                 | 581709538.5016806  | -9220582724175964669 | 9222319248016325744 |
+| 251755    | 102228   | 157249730                 | 635129117.8883867  | -9216259283599904409 | 9221841716197261760 |
+| 179818    | 101357   | 148274057                 | 561582781.7541167  | -9220915657702114877 | 9223056416222684334 |
+| 4714      | 100794   | 153482737                 | 569642265.8630474  | -9169897131735029821 | 9222639538364314079 |
+| 33626     | 99642    | 161679467                 | 572325279.8655788  | -9161811291475417555 | 9223080500927244738 |
+| 6221      | 98613    | 145578720                 | 593790573.2024987  | -9217751057548246102 | 9222616071696943949 |
+| 76221     | 98543    | 146944768                 | 426183926.6956557  | -9221190731827686976 | 9223295003185418147 |
+| 1805      | 97919    | 151912811                 | 581355288.330324   | -9222533007323865344 | 9223063030000668706 |
+| 230855    | 95647    | 146068946                 | 787517061.3445272  | -9222251953176095888 | 9222007220232220837 |
+| 57425     | 92870    | 145293478                 | 630648843.1941854  | -9215706595240223660 | 9221843257985697231 |
+| 178342    | 89428    | 142029761                 | 553413539.3894417  | -9192655909902302746 | 9222745290776311949 |
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+
+=== EXPLAIN ANALYZE (Query 2, Iteration 1) ===
+ProjectionExec: expr=[CounterID@0 as CounterID, count(*)@1 as count(*), sum(hits.ResolutionWidth)@2 as sum(hits.ResolutionWidth), avg(hits.ClientIP)@3 as avg(hits.ClientIP), min(hits.UserID)@4 as min(hits.UserID), max(hits.UserID)@5 as max(hits.UserID)], metrics=[output_rows=100, elapsed_compute=2.15µs, output_bytes=4.3 KB, output_batches=1, expr_0_eval_time=250ns, expr_1_eval_time=150ns, expr_2_eval_time=150ns, expr_3_eval_time=150ns, expr_4_eval_time=60ns, expr_5_eval_time=80ns]
+  SortPreservingMergeExec: [count(Int64(1))@6 DESC], fetch=100, metrics=[output_rows=100, elapsed_compute=17.36µs, output_bytes=5.1 KB, output_batches=1]
+    SortExec: TopK(fetch=100), expr=[count(*)@1 DESC], preserve_partitioning=[true], filter=[count(*)@1 IS NULL OR count(*)@1 > 1275], metrics=[output_rows=1.49 K, elapsed_compute=826.99µs, output_bytes=75.8 KB, output_batches=16, row_replacements=2.08 K]
+      ProjectionExec: expr=[CounterID@0 as CounterID, count(Int64(1))@1 as count(*), sum(hits.ResolutionWidth)@2 as sum(hits.ResolutionWidth), avg(hits.ClientIP)@3 as avg(hits.ClientIP), min(hits.UserID)@4 as min(hits.UserID), max(hits.UserID)@5 as max(hits.UserID), count(Int64(1))@1 as count(Int64(1))], metrics=[output_rows=6.50 K, elapsed_compute=37.06µs, output_bytes=286.1 KB, output_batches=16, expr_0_eval_time=3.02µs, expr_1_eval_time=1.64µs, expr_2_eval_time=1.08µs, expr_3_eval_time=1.19µs, expr_4_eval_time=1.32µs, expr_5_eval_time=1.06µs, expr_6_eval_time=1.38µs]
+        AggregateExec: mode=FinalPartitioned, gby=[CounterID@0 as CounterID], aggr=[count(Int64(1)), sum(hits.ResolutionWidth), avg(hits.ClientIP), min(hits.UserID), max(hits.UserID)], metrics=[output_rows=6.50 K, elapsed_compute=629.07µs, output_bytes=286.1 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=881.9 K, aggregate_arguments_time=38.49µs, aggregation_time=366.81µs, emitting_time=53.75µs, time_calculating_group_ids=239.22µs]
+          RepartitionExec: partitioning=Hash([CounterID@0], 16), input_partitions=16, metrics=[output_rows=6.74 K, elapsed_compute=679.32µs, output_bytes=6.5 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=4.13s, repartition_time=835.04µs, send_time=310.59µs]
+            AggregateExec: mode=Partial, gby=[CounterID@0 as CounterID], aggr=[count(Int64(1)), sum(hits.ResolutionWidth), avg(hits.ClientIP), min(hits.UserID), max(hits.UserID)], metrics=[output_rows=6.74 K, elapsed_compute=1.39s, output_bytes=494.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=1.63 M, aggregate_arguments_time=142.89ms, aggregation_time=1.62s, emitting_time=100.38µs, time_calculating_group_ids=639.51ms, reduction_factor=0.008% (6.74 K/83.91 M)]
+              DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[CounterID, ClientIP, UserID, ResolutionWidth], file_type=liquid_parquet, metrics=[output_rows=83.91 M, elapsed_compute=16ns, output_bytes=1441.0 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=508.8 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=4.08ms, metadata_load_time=2.48ms, page_index_eval_time=3.52µs, row_pushdown_eval_time=32ns, statistics_eval_time=442.52µs, time_elapsed_opening=9.32ms, time_elapsed_processing=2.44s, time_elapsed_scanning_total=4.12s, time_elapsed_scanning_until_data=129.44ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=24436, mem=383MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=24436
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 343ms
+
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+| CounterID | count(*) | sum(hits.ResolutionWidth) | avg(hits.ClientIP) | min(hits.UserID)     | max(hits.UserID)    |
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+| 199550    | 7008754  | 11000750426               | 526061615.11770093 | -9223346024853429862 | 9223371425449051681 |
+| 3922      | 5361252  | 8393158611                | 597269271.6404972  | -9223178030934747259 | 9223310216978545089 |
+| 105857    | 4177843  | 6673858410                | 570497720.4199646  | -9223140121085850272 | 9223363230269068491 |
+| 46429     | 3584953  | 5433637584                | 615188001.7601932  | -9223361817928421363 | 9223175814720670285 |
+| 122612    | 3542228  | 5367439224                | 542892346.2468649  | -9219567788895632964 | 9223323596402503223 |
+| 244045    | 3306517  | 5031073914                | 538446474.7601129  | -9223357932189777279 | 9223357816360387857 |
+| 225510    | 3205393  | 5171189987                | 562845975.3974967  | -9222586972143858525 | 9223324900102909551 |
+| 178321    | 2628236  | 4018884714                | 565884683.0126575  | -9215921826393574013 | 9223276268586242047 |
+| 245438    | 2446178  | 3584565635                | 577867363.6261944  | -9222028152060881928 | 9223290364457130352 |
+| 233773    | 2230709  | 3530320103                | 626762708.99691    | -9222607364038294503 | 9223328854322062683 |
+| 145496    | 2066529  | 2857655719                | 608215615.9204448  | -9221527730523596121 | 9222905909172755426 |
+| 99062     | 1394978  | 2158584462                | 572460191.2268666  | -9222309912477497029 | 9223325148563768236 |
+| 123906    | 1229349  | 1918969736                | 538507560.6318133  | -9222486292139758092 | 9223353962785668041 |
+| 119677    | 1108082  | 1549383385                | 572581699.2718445  | -9222196182830295817 | 9223370512262829419 |
+| 229540    | 1105062  | 1248220707                | 557994977.7382944  | -9219167411733195992 | 9223352541879458469 |
+| 69154     | 1037673  | 1457269075                | 691754198.8292391  | -9222942943452632831 | 9223121880512945368 |
+| 5822      | 1037577  | 1507330000                | 499031503.6938203  | -9221251372859339681 | 9222683096952890403 |
+| 1483      | 953754   | 1488581113                | 536916264.1378626  | -9222225582324279020 | 9223305987483385459 |
+| 128858    | 918847   | 1455469617                | 574146956.5097519  | -9219909450504070394 | 9223281383228192348 |
+| 190147    | 906972   | 1374284572                | 535717220.3001438  | -9220742289079206593 | 9223337174614582560 |
+| 117917    | 836928   | 1338389339                | 504229164.24259436 | -9221697809726755275 | 9223278921056450441 |
+| 140443    | 800629   | 1171100903                | 603489007.1068972  | -9219107325584650578 | 9222724320443902653 |
+| 7525      | 721310   | 1158645198                | 581026459.2789702  | -9221279140477359784 | 9223283516011928192 |
+| 256004    | 701789   | 1085322762                | 447919161.3892908  | -9222837552450474710 | 9223269811334780822 |
+| 62        | 671519   | 1071539420                | 630213038.1712118  | -9219054275930888834 | 9223258955477571344 |
+| 1095      | 663876   | 1032442903                | 474617708.51855767 | -9220868456983495476 | 9223011030100129785 |
+| 63217     | 654291   | 1035219776                | 528772410.193472   | -9222953906676075492 | 9222917033255998580 |
+| 3035      | 641111   | 880080266                 | 563970979.4483358  | -9222579484431160461 | 9223251115378221328 |
+| 132048    | 634657   | 1009496197                | 576126438.0492487  | -9223360918607336854 | 9223356537478078323 |
+| 95978     | 631537   | 873808435                 | 574827791.3929857  | -9223344277659414581 | 9223161510779360742 |
+| 186300    | 520191   | 828027220                 | 575313984.0301851  | -9222378406364091204 | 9223334595469392411 |
+| 146891    | 480900   | 717791742                 | 590065562.7974756  | -9222031466889386267 | 9222918268856352859 |
+| 226383    | 460241   | 727013898                 | 523767090.92059815 | -9216261718549834226 | 9223364125493659818 |
+| 163373    | 452769   | 497077287                 | 457446963.96624327 | -9223308501352264398 | 9223160689807097605 |
+| 135316    | 445732   | 651929333                 | 579802409.8134013  | -9222379336558706109 | 9223211195852902999 |
+| 190994    | 428332   | 679639468                 | 515716885.29911375 | -9220727380977332871 | 9223180426617519058 |
+| 96948     | 391724   | 608442784                 | 745293039.8965598  | -9219931312368108118 | 9223201849210885423 |
+| 220992    | 349551   | 538733066                 | 189094983.70629466 | -9208815724237318257 | 9222534799014302671 |
+| 56820     | 281653   | 375296949                 | 554983232.7167614  | -9219510007918356923 | 9223073870038724428 |
+| 44779     | 277295   | 431194710                 | 593203648.6582737  | -9219217901786969051 | 9223328267615370523 |
+| 2264      | 276324   | 391971588                 | 521948934.41942793 | -9222506155710409430 | 9223285090807786359 |
+| 180984    | 273749   | 427008951                 | 580176372.805581   | -9220760007512044352 | 9223222157736946805 |
+| 109363    | 271265   | 414988694                 | 620376339.6527492  | -9221464912395316444 | 9223140151779382655 |
+| 95427     | 262650   | 410822557                 | 517374509.42930514 | -9213707126627324353 | 9222268276290908332 |
+| 180215    | 260782   | 387610781                 | 632047524.6783482  | -9222159261305268509 | 9222147231107032881 |
+| 158401    | 259769   | 406253263                 | 508342213.27201474 | -9210545542825040110 | 9221490578562345718 |
+| 76325     | 258995   | 343109586                 | 618927001.7924516  | -9208077693383710261 | 9223057021953036435 |
+| 38        | 258103   | 413124070                 | 595149961.8993309  | -9214751021948998350 | 9222220959557218405 |
+| 121668    | 257995   | 370908672                 | 580115807.37905    | -9223344277659414581 | 9222689430320554375 |
+| 35534     | 256522   | 376698994                 | 528784160.80790734 | -9222533007323865344 | 9223062682422697315 |
+| 77639     | 248260   | 351078600                 | 541498459.4351044  | -9222859610726673510 | 9223222157736946805 |
+| 1060      | 247772   | 384804373                 | 585033197.5597203  | -9222077718927031550 | 9223211410241297629 |
+| 218267    | 233961   | 368402614                 | 545048321.5842171  | -9223140121085850272 | 9223350958296956768 |
+| 188878    | 233739   | 365193582                 | 406666479.1392921  | -9211262286914389340 | 9221202196045095241 |
+| 47290     | 233671   | 342320339                 | 542437377.2895439  | -9223141462922514222 | 9223032176062256297 |
+| 196224    | 227138   | 331809535                 | 498760269.7049503  | -9222684084728389486 | 9223035681241719685 |
+| 137682    | 216572   | 311389552                 | 533244661.57431245 | -9216808781562308452 | 9223156973214784720 |
+| 262004    | 201005   | 306907361                 | 632128976.7129126  | -9221347161997830618 | 9222911160710512740 |
+| 1634      | 198770   | 309726635                 | 581531795.9865171  | -9222055010781338364 | 9222745724455326045 |
+| 67476     | 192977   | 298224992                 | 634859742.6755261  | -9221107724032399225 | 9223195561235600876 |
+| 40206     | 184091   | 272202998                 | 547546116.0964577  | -9219746217193517963 | 9222771265453975771 |
+| 234004    | 177964   | 282622171                 | 469543026.06807554 | -9216692926449687586 | 9222951634718153876 |
+| 222436    | 174704   | 266988513                 | 659994454.560199   | -9179163174697806244 | 9217237690230600656 |
+| 245620    | 167898   | 240772554                 | 543915176.2346485  | -9219998449221996561 | 9222560996351939973 |
+| 40367     | 165495   | 258177160                 | 568977140.3346325  | -9219785195121081235 | 9222710303952416981 |
+| 230962    | 164837   | 234515561                 | 578928853.4509121  | -9222379336558706109 | 9223157625055330559 |
+| 196239    | 161468   | 235774520                 | 558701095.8368593  | -9202062231357422227 | 9222505521277593773 |
+| 148926    | 158710   | 233898313                 | 579088034.5789301  | -9213748710537331905 | 9223274311931800502 |
+| 162968    | 157687   | 247773957                 | 593836197.386132   | -9214471111029935779 | 9221515213529766473 |
+| 136213    | 155562   | 243340088                 | 550933430.8949357  | -9218797936899174875 | 9220939585324330250 |
+| 515       | 144879   | 0                         | 33341751.10080136  | -9212732240587657405 | 9222290370071727009 |
+| 159470    | 140185   | 238573785                 | 557306536.073774   | -9218499312438479990 | 9222114887739180081 |
+| 130273    | 139377   | 192998049                 | 602831358.778127   | -9219614395220980485 | 9223298339261107482 |
+| 220091    | 138483   | 213387663                 | 654889873.9276806  | -9219735935929844681 | 9222821688828331809 |
+| 252592    | 136760   | 210684935                 | 572602114.6053013  | -9217404644865839104 | 9222411929313885660 |
+| 251927    | 136718   | 215071172                 | 633532236.5871136  | -9181222879803742142 | 9222359998224142044 |
+| 256486    | 135019   | 210179679                 | 535204835.3677408  | -9221095754946536745 | 9221987299461560959 |
+| 63621     | 132485   | 201726306                 | 617446311.6710798  | -9218417840239440744 | 9222163720402304581 |
+| 105746    | 130240   | 200596078                 | 615470299.6828164  | -9117195525835474888 | 9217035138177152350 |
+| 97467     | 129996   | 201769662                 | 578246634.2355765  | -9204560739207379089 | 9223295003185418147 |
+| 258631    | 128584   | 91423504                  | 658532551.9637125  | -9219431016831528964 | 9223029612224199235 |
+| 78185     | 123800   | 184493867                 | 29979611.883424878 | -9213947883123536724 | 9220799660714201589 |
+| 191697    | 122125   | 189668884                 | 519751948.9637748  | -9219546544654074167 | 9222866579601096556 |
+| 76265     | 121496   | 177872175                 | 689515745.5183052  | -9208220438662750513 | 9222928859572656776 |
+| 786       | 119548   | 0                         | 549179463.585497   | -9167567564828250761 | 9223145304211283826 |
+| 125255    | 117997   | 157713616                 | 644795864.800961   | -9217166802383061772 | 9221680052571119028 |
+| 4635      | 115131   | 179380443                 | 537991421.0614778  | -9221140058421695091 | 9223181498201031493 |
+| 1830      | 111593   | 0                         | 444188440.95942396 | -9210089414629882110 | 9223011030100129785 |
+| 54312     | 107267   | 171194969                 | 510032548.56372416 | -9205731947124412904 | 9223228885409115872 |
+| 208744    | 103532   | 144676607                 | 581709538.5016806  | -9220582724175964669 | 9222319248016325744 |
+| 251755    | 102228   | 157249730                 | 635129117.8883867  | -9216259283599904409 | 9221841716197261760 |
+| 179818    | 101357   | 148274057                 | 561582781.7541167  | -9220915657702114877 | 9223056416222684334 |
+| 4714      | 100794   | 153482737                 | 569642265.8630474  | -9169897131735029821 | 9222639538364314079 |
+| 33626     | 99642    | 161679467                 | 572325279.8655788  | -9161811291475417555 | 9223080500927244738 |
+| 6221      | 98613    | 145578720                 | 593790573.2024987  | -9217751057548246102 | 9222616071696943949 |
+| 76221     | 98543    | 146944768                 | 426183926.6956557  | -9221190731827686976 | 9223295003185418147 |
+| 1805      | 97919    | 151912811                 | 581355288.330324   | -9222533007323865344 | 9223063030000668706 |
+| 230855    | 95647    | 146068946                 | 787517061.3445272  | -9222251953176095888 | 9222007220232220837 |
+| 57425     | 92870    | 145293478                 | 630648843.1941854  | -9215706595240223660 | 9221843257985697231 |
+| 178342    | 89428    | 142029761                 | 553413539.3894417  | -9192655909902302746 | 9222745290776311949 |
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+
+=== EXPLAIN ANALYZE (Query 2, Iteration 2) ===
+ProjectionExec: expr=[CounterID@0 as CounterID, count(*)@1 as count(*), sum(hits.ResolutionWidth)@2 as sum(hits.ResolutionWidth), avg(hits.ClientIP)@3 as avg(hits.ClientIP), min(hits.UserID)@4 as min(hits.UserID), max(hits.UserID)@5 as max(hits.UserID)], metrics=[output_rows=100, elapsed_compute=3.07µs, output_bytes=4.3 KB, output_batches=1, expr_0_eval_time=630ns, expr_1_eval_time=70ns, expr_2_eval_time=160ns, expr_3_eval_time=90ns, expr_4_eval_time=70ns, expr_5_eval_time=160ns]
+  SortPreservingMergeExec: [count(Int64(1))@6 DESC], fetch=100, metrics=[output_rows=100, elapsed_compute=15.88µs, output_bytes=5.1 KB, output_batches=1]
+    SortExec: TopK(fetch=100), expr=[count(*)@1 DESC], preserve_partitioning=[true], filter=[count(*)@1 IS NULL OR count(*)@1 > 1275], metrics=[output_rows=1.46 K, elapsed_compute=792.63µs, output_bytes=74.0 KB, output_batches=16, row_replacements=1.90 K]
+      ProjectionExec: expr=[CounterID@0 as CounterID, count(Int64(1))@1 as count(*), sum(hits.ResolutionWidth)@2 as sum(hits.ResolutionWidth), avg(hits.ClientIP)@3 as avg(hits.ClientIP), min(hits.UserID)@4 as min(hits.UserID), max(hits.UserID)@5 as max(hits.UserID), count(Int64(1))@1 as count(Int64(1))], metrics=[output_rows=6.50 K, elapsed_compute=40.90µs, output_bytes=286.1 KB, output_batches=16, expr_0_eval_time=3.44µs, expr_1_eval_time=1.71µs, expr_2_eval_time=1.55µs, expr_3_eval_time=1.49µs, expr_4_eval_time=1.55µs, expr_5_eval_time=1.39µs, expr_6_eval_time=1.48µs]
+        AggregateExec: mode=FinalPartitioned, gby=[CounterID@0 as CounterID], aggr=[count(Int64(1)), sum(hits.ResolutionWidth), avg(hits.ClientIP), min(hits.UserID), max(hits.UserID)], metrics=[output_rows=6.50 K, elapsed_compute=655.28µs, output_bytes=286.1 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=881.9 K, aggregate_arguments_time=41.11µs, aggregation_time=379.76µs, emitting_time=58.25µs, time_calculating_group_ids=243.46µs]
+          RepartitionExec: partitioning=Hash([CounterID@0], 16), input_partitions=16, metrics=[output_rows=6.74 K, elapsed_compute=794.09µs, output_bytes=6.5 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=4.15s, repartition_time=853.88µs, send_time=330.73µs]
+            AggregateExec: mode=Partial, gby=[CounterID@0 as CounterID], aggr=[count(Int64(1)), sum(hits.ResolutionWidth), avg(hits.ClientIP), min(hits.UserID), max(hits.UserID)], metrics=[output_rows=6.74 K, elapsed_compute=1.39s, output_bytes=494.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=1.63 M, aggregate_arguments_time=142.79ms, aggregation_time=1.63s, emitting_time=110.61µs, time_calculating_group_ids=625.28ms, reduction_factor=0.008% (6.74 K/83.91 M)]
+              DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[CounterID, ClientIP, UserID, ResolutionWidth], file_type=liquid_parquet, metrics=[output_rows=83.91 M, elapsed_compute=16ns, output_bytes=1441.0 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=508.8 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=3.69ms, metadata_load_time=2.57ms, page_index_eval_time=5.79µs, row_pushdown_eval_time=32ns, statistics_eval_time=447.01µs, time_elapsed_opening=9.14ms, time_elapsed_processing=2.42s, time_elapsed_scanning_total=4.14s, time_elapsed_scanning_until_data=96.68ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=24436, mem=383MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=24436
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 359ms
+
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+| CounterID | count(*) | sum(hits.ResolutionWidth) | avg(hits.ClientIP) | min(hits.UserID)     | max(hits.UserID)    |
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+| 199550    | 7008754  | 11000750426               | 526061615.11770093 | -9223346024853429862 | 9223371425449051681 |
+| 3922      | 5361252  | 8393158611                | 597269271.6404972  | -9223178030934747259 | 9223310216978545089 |
+| 105857    | 4177843  | 6673858410                | 570497720.4199646  | -9223140121085850272 | 9223363230269068491 |
+| 46429     | 3584953  | 5433637584                | 615188001.7601932  | -9223361817928421363 | 9223175814720670285 |
+| 122612    | 3542228  | 5367439224                | 542892346.2468649  | -9219567788895632964 | 9223323596402503223 |
+| 244045    | 3306517  | 5031073914                | 538446474.7601129  | -9223357932189777279 | 9223357816360387857 |
+| 225510    | 3205393  | 5171189987                | 562845975.3974967  | -9222586972143858525 | 9223324900102909551 |
+| 178321    | 2628236  | 4018884714                | 565884683.0126575  | -9215921826393574013 | 9223276268586242047 |
+| 245438    | 2446178  | 3584565635                | 577867363.6261944  | -9222028152060881928 | 9223290364457130352 |
+| 233773    | 2230709  | 3530320103                | 626762708.99691    | -9222607364038294503 | 9223328854322062683 |
+| 145496    | 2066529  | 2857655719                | 608215615.9204448  | -9221527730523596121 | 9222905909172755426 |
+| 99062     | 1394978  | 2158584462                | 572460191.2268666  | -9222309912477497029 | 9223325148563768236 |
+| 123906    | 1229349  | 1918969736                | 538507560.6318133  | -9222486292139758092 | 9223353962785668041 |
+| 119677    | 1108082  | 1549383385                | 572581699.2718445  | -9222196182830295817 | 9223370512262829419 |
+| 229540    | 1105062  | 1248220707                | 557994977.7382944  | -9219167411733195992 | 9223352541879458469 |
+| 69154     | 1037673  | 1457269075                | 691754198.8292391  | -9222942943452632831 | 9223121880512945368 |
+| 5822      | 1037577  | 1507330000                | 499031503.6938203  | -9221251372859339681 | 9222683096952890403 |
+| 1483      | 953754   | 1488581113                | 536916264.1378626  | -9222225582324279020 | 9223305987483385459 |
+| 128858    | 918847   | 1455469617                | 574146956.5097519  | -9219909450504070394 | 9223281383228192348 |
+| 190147    | 906972   | 1374284572                | 535717220.3001438  | -9220742289079206593 | 9223337174614582560 |
+| 117917    | 836928   | 1338389339                | 504229164.24259436 | -9221697809726755275 | 9223278921056450441 |
+| 140443    | 800629   | 1171100903                | 603489007.1068972  | -9219107325584650578 | 9222724320443902653 |
+| 7525      | 721310   | 1158645198                | 581026459.2789702  | -9221279140477359784 | 9223283516011928192 |
+| 256004    | 701789   | 1085322762                | 447919161.3892908  | -9222837552450474710 | 9223269811334780822 |
+| 62        | 671519   | 1071539420                | 630213038.1712118  | -9219054275930888834 | 9223258955477571344 |
+| 1095      | 663876   | 1032442903                | 474617708.51855767 | -9220868456983495476 | 9223011030100129785 |
+| 63217     | 654291   | 1035219776                | 528772410.193472   | -9222953906676075492 | 9222917033255998580 |
+| 3035      | 641111   | 880080266                 | 563970979.4483358  | -9222579484431160461 | 9223251115378221328 |
+| 132048    | 634657   | 1009496197                | 576126438.0492487  | -9223360918607336854 | 9223356537478078323 |
+| 95978     | 631537   | 873808435                 | 574827791.3929857  | -9223344277659414581 | 9223161510779360742 |
+| 186300    | 520191   | 828027220                 | 575313984.0301851  | -9222378406364091204 | 9223334595469392411 |
+| 146891    | 480900   | 717791742                 | 590065562.7974756  | -9222031466889386267 | 9222918268856352859 |
+| 226383    | 460241   | 727013898                 | 523767090.92059815 | -9216261718549834226 | 9223364125493659818 |
+| 163373    | 452769   | 497077287                 | 457446963.96624327 | -9223308501352264398 | 9223160689807097605 |
+| 135316    | 445732   | 651929333                 | 579802409.8134013  | -9222379336558706109 | 9223211195852902999 |
+| 190994    | 428332   | 679639468                 | 515716885.29911375 | -9220727380977332871 | 9223180426617519058 |
+| 96948     | 391724   | 608442784                 | 745293039.8965598  | -9219931312368108118 | 9223201849210885423 |
+| 220992    | 349551   | 538733066                 | 189094983.70629466 | -9208815724237318257 | 9222534799014302671 |
+| 56820     | 281653   | 375296949                 | 554983232.7167614  | -9219510007918356923 | 9223073870038724428 |
+| 44779     | 277295   | 431194710                 | 593203648.6582737  | -9219217901786969051 | 9223328267615370523 |
+| 2264      | 276324   | 391971588                 | 521948934.41942793 | -9222506155710409430 | 9223285090807786359 |
+| 180984    | 273749   | 427008951                 | 580176372.805581   | -9220760007512044352 | 9223222157736946805 |
+| 109363    | 271265   | 414988694                 | 620376339.6527492  | -9221464912395316444 | 9223140151779382655 |
+| 95427     | 262650   | 410822557                 | 517374509.42930514 | -9213707126627324353 | 9222268276290908332 |
+| 180215    | 260782   | 387610781                 | 632047524.6783482  | -9222159261305268509 | 9222147231107032881 |
+| 158401    | 259769   | 406253263                 | 508342213.27201474 | -9210545542825040110 | 9221490578562345718 |
+| 76325     | 258995   | 343109586                 | 618927001.7924516  | -9208077693383710261 | 9223057021953036435 |
+| 38        | 258103   | 413124070                 | 595149961.8993309  | -9214751021948998350 | 9222220959557218405 |
+| 121668    | 257995   | 370908672                 | 580115807.37905    | -9223344277659414581 | 9222689430320554375 |
+| 35534     | 256522   | 376698994                 | 528784160.80790734 | -9222533007323865344 | 9223062682422697315 |
+| 77639     | 248260   | 351078600                 | 541498459.4351044  | -9222859610726673510 | 9223222157736946805 |
+| 1060      | 247772   | 384804373                 | 585033197.5597203  | -9222077718927031550 | 9223211410241297629 |
+| 218267    | 233961   | 368402614                 | 545048321.5842171  | -9223140121085850272 | 9223350958296956768 |
+| 188878    | 233739   | 365193582                 | 406666479.1392921  | -9211262286914389340 | 9221202196045095241 |
+| 47290     | 233671   | 342320339                 | 542437377.2895439  | -9223141462922514222 | 9223032176062256297 |
+| 196224    | 227138   | 331809535                 | 498760269.7049503  | -9222684084728389486 | 9223035681241719685 |
+| 137682    | 216572   | 311389552                 | 533244661.57431245 | -9216808781562308452 | 9223156973214784720 |
+| 262004    | 201005   | 306907361                 | 632128976.7129126  | -9221347161997830618 | 9222911160710512740 |
+| 1634      | 198770   | 309726635                 | 581531795.9865171  | -9222055010781338364 | 9222745724455326045 |
+| 67476     | 192977   | 298224992                 | 634859742.6755261  | -9221107724032399225 | 9223195561235600876 |
+| 40206     | 184091   | 272202998                 | 547546116.0964577  | -9219746217193517963 | 9222771265453975771 |
+| 234004    | 177964   | 282622171                 | 469543026.06807554 | -9216692926449687586 | 9222951634718153876 |
+| 222436    | 174704   | 266988513                 | 659994454.560199   | -9179163174697806244 | 9217237690230600656 |
+| 245620    | 167898   | 240772554                 | 543915176.2346485  | -9219998449221996561 | 9222560996351939973 |
+| 40367     | 165495   | 258177160                 | 568977140.3346325  | -9219785195121081235 | 9222710303952416981 |
+| 230962    | 164837   | 234515561                 | 578928853.4509121  | -9222379336558706109 | 9223157625055330559 |
+| 196239    | 161468   | 235774520                 | 558701095.8368593  | -9202062231357422227 | 9222505521277593773 |
+| 148926    | 158710   | 233898313                 | 579088034.5789301  | -9213748710537331905 | 9223274311931800502 |
+| 162968    | 157687   | 247773957                 | 593836197.386132   | -9214471111029935779 | 9221515213529766473 |
+| 136213    | 155562   | 243340088                 | 550933430.8949357  | -9218797936899174875 | 9220939585324330250 |
+| 515       | 144879   | 0                         | 33341751.10080136  | -9212732240587657405 | 9222290370071727009 |
+| 159470    | 140185   | 238573785                 | 557306536.073774   | -9218499312438479990 | 9222114887739180081 |
+| 130273    | 139377   | 192998049                 | 602831358.778127   | -9219614395220980485 | 9223298339261107482 |
+| 220091    | 138483   | 213387663                 | 654889873.9276806  | -9219735935929844681 | 9222821688828331809 |
+| 252592    | 136760   | 210684935                 | 572602114.6053013  | -9217404644865839104 | 9222411929313885660 |
+| 251927    | 136718   | 215071172                 | 633532236.5871136  | -9181222879803742142 | 9222359998224142044 |
+| 256486    | 135019   | 210179679                 | 535204835.3677408  | -9221095754946536745 | 9221987299461560959 |
+| 63621     | 132485   | 201726306                 | 617446311.6710798  | -9218417840239440744 | 9222163720402304581 |
+| 105746    | 130240   | 200596078                 | 615470299.6828164  | -9117195525835474888 | 9217035138177152350 |
+| 97467     | 129996   | 201769662                 | 578246634.2355765  | -9204560739207379089 | 9223295003185418147 |
+| 258631    | 128584   | 91423504                  | 658532551.9637125  | -9219431016831528964 | 9223029612224199235 |
+| 78185     | 123800   | 184493867                 | 29979611.883424878 | -9213947883123536724 | 9220799660714201589 |
+| 191697    | 122125   | 189668884                 | 519751948.9637748  | -9219546544654074167 | 9222866579601096556 |
+| 76265     | 121496   | 177872175                 | 689515745.5183052  | -9208220438662750513 | 9222928859572656776 |
+| 786       | 119548   | 0                         | 549179463.585497   | -9167567564828250761 | 9223145304211283826 |
+| 125255    | 117997   | 157713616                 | 644795864.800961   | -9217166802383061772 | 9221680052571119028 |
+| 4635      | 115131   | 179380443                 | 537991421.0614778  | -9221140058421695091 | 9223181498201031493 |
+| 1830      | 111593   | 0                         | 444188440.95942396 | -9210089414629882110 | 9223011030100129785 |
+| 54312     | 107267   | 171194969                 | 510032548.56372416 | -9205731947124412904 | 9223228885409115872 |
+| 208744    | 103532   | 144676607                 | 581709538.5016806  | -9220582724175964669 | 9222319248016325744 |
+| 251755    | 102228   | 157249730                 | 635129117.8883867  | -9216259283599904409 | 9221841716197261760 |
+| 179818    | 101357   | 148274057                 | 561582781.7541167  | -9220915657702114877 | 9223056416222684334 |
+| 4714      | 100794   | 153482737                 | 569642265.8630474  | -9169897131735029821 | 9222639538364314079 |
+| 33626     | 99642    | 161679467                 | 572325279.8655788  | -9161811291475417555 | 9223080500927244738 |
+| 6221      | 98613    | 145578720                 | 593790573.2024987  | -9217751057548246102 | 9222616071696943949 |
+| 76221     | 98543    | 146944768                 | 426183926.6956557  | -9221190731827686976 | 9223295003185418147 |
+| 1805      | 97919    | 151912811                 | 581355288.330324   | -9222533007323865344 | 9223063030000668706 |
+| 230855    | 95647    | 146068946                 | 787517061.3445272  | -9222251953176095888 | 9222007220232220837 |
+| 57425     | 92870    | 145293478                 | 630648843.1941854  | -9215706595240223660 | 9221843257985697231 |
+| 178342    | 89428    | 142029761                 | 553413539.3894417  | -9192655909902302746 | 9222745290776311949 |
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+
+=== EXPLAIN ANALYZE (Query 2, Iteration 3) ===
+ProjectionExec: expr=[CounterID@0 as CounterID, count(*)@1 as count(*), sum(hits.ResolutionWidth)@2 as sum(hits.ResolutionWidth), avg(hits.ClientIP)@3 as avg(hits.ClientIP), min(hits.UserID)@4 as min(hits.UserID), max(hits.UserID)@5 as max(hits.UserID)], metrics=[output_rows=100, elapsed_compute=2.37µs, output_bytes=4.3 KB, output_batches=1, expr_0_eval_time=220ns, expr_1_eval_time=140ns, expr_2_eval_time=150ns, expr_3_eval_time=70ns, expr_4_eval_time=70ns, expr_5_eval_time=120ns]
+  SortPreservingMergeExec: [count(Int64(1))@6 DESC], fetch=100, metrics=[output_rows=100, elapsed_compute=16.47µs, output_bytes=5.1 KB, output_batches=1]
+    SortExec: TopK(fetch=100), expr=[count(*)@1 DESC], preserve_partitioning=[true], filter=[count(*)@1 IS NULL OR count(*)@1 > 1275], metrics=[output_rows=1.45 K, elapsed_compute=829.69µs, output_bytes=73.7 KB, output_batches=16, row_replacements=2.15 K]
+      ProjectionExec: expr=[CounterID@0 as CounterID, count(Int64(1))@1 as count(*), sum(hits.ResolutionWidth)@2 as sum(hits.ResolutionWidth), avg(hits.ClientIP)@3 as avg(hits.ClientIP), min(hits.UserID)@4 as min(hits.UserID), max(hits.UserID)@5 as max(hits.UserID), count(Int64(1))@1 as count(Int64(1))], metrics=[output_rows=6.50 K, elapsed_compute=38.24µs, output_bytes=286.1 KB, output_batches=16, expr_0_eval_time=3.13µs, expr_1_eval_time=1.41µs, expr_2_eval_time=1.39µs, expr_3_eval_time=1.40µs, expr_4_eval_time=1.45µs, expr_5_eval_time=1.06µs, expr_6_eval_time=1.21µs]
+        AggregateExec: mode=FinalPartitioned, gby=[CounterID@0 as CounterID], aggr=[count(Int64(1)), sum(hits.ResolutionWidth), avg(hits.ClientIP), min(hits.UserID), max(hits.UserID)], metrics=[output_rows=6.50 K, elapsed_compute=612.04µs, output_bytes=286.1 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=881.9 K, aggregate_arguments_time=53.50µs, aggregation_time=397.74µs, emitting_time=56.80µs, time_calculating_group_ids=226.04µs]
+          RepartitionExec: partitioning=Hash([CounterID@0], 16), input_partitions=16, metrics=[output_rows=6.74 K, elapsed_compute=694.77µs, output_bytes=6.5 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=4.10s, repartition_time=823.33µs, send_time=335.58µs]
+            AggregateExec: mode=Partial, gby=[CounterID@0 as CounterID], aggr=[count(Int64(1)), sum(hits.ResolutionWidth), avg(hits.ClientIP), min(hits.UserID), max(hits.UserID)], metrics=[output_rows=6.74 K, elapsed_compute=1.38s, output_bytes=494.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=1.63 M, aggregate_arguments_time=143.55ms, aggregation_time=1.58s, emitting_time=104.41µs, time_calculating_group_ids=632.48ms, reduction_factor=0.008% (6.74 K/83.91 M)]
+              DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[CounterID, ClientIP, UserID, ResolutionWidth], file_type=liquid_parquet, metrics=[output_rows=83.91 M, elapsed_compute=16ns, output_bytes=1441.0 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=508.8 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=3.83ms, metadata_load_time=3.15ms, page_index_eval_time=4.40µs, row_pushdown_eval_time=32ns, statistics_eval_time=468.48µs, time_elapsed_opening=10.30ms, time_elapsed_processing=2.38s, time_elapsed_scanning_total=4.09s, time_elapsed_scanning_until_data=94.88ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=24436, mem=383MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=24436
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 323ms
+
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+| CounterID | count(*) | sum(hits.ResolutionWidth) | avg(hits.ClientIP) | min(hits.UserID)     | max(hits.UserID)    |
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+| 199550    | 7008754  | 11000750426               | 526061615.11770093 | -9223346024853429862 | 9223371425449051681 |
+| 3922      | 5361252  | 8393158611                | 597269271.6404972  | -9223178030934747259 | 9223310216978545089 |
+| 105857    | 4177843  | 6673858410                | 570497720.4199646  | -9223140121085850272 | 9223363230269068491 |
+| 46429     | 3584953  | 5433637584                | 615188001.7601932  | -9223361817928421363 | 9223175814720670285 |
+| 122612    | 3542228  | 5367439224                | 542892346.2468649  | -9219567788895632964 | 9223323596402503223 |
+| 244045    | 3306517  | 5031073914                | 538446474.7601129  | -9223357932189777279 | 9223357816360387857 |
+| 225510    | 3205393  | 5171189987                | 562845975.3974967  | -9222586972143858525 | 9223324900102909551 |
+| 178321    | 2628236  | 4018884714                | 565884683.0126575  | -9215921826393574013 | 9223276268586242047 |
+| 245438    | 2446178  | 3584565635                | 577867363.6261944  | -9222028152060881928 | 9223290364457130352 |
+| 233773    | 2230709  | 3530320103                | 626762708.99691    | -9222607364038294503 | 9223328854322062683 |
+| 145496    | 2066529  | 2857655719                | 608215615.9204448  | -9221527730523596121 | 9222905909172755426 |
+| 99062     | 1394978  | 2158584462                | 572460191.2268666  | -9222309912477497029 | 9223325148563768236 |
+| 123906    | 1229349  | 1918969736                | 538507560.6318133  | -9222486292139758092 | 9223353962785668041 |
+| 119677    | 1108082  | 1549383385                | 572581699.2718445  | -9222196182830295817 | 9223370512262829419 |
+| 229540    | 1105062  | 1248220707                | 557994977.7382944  | -9219167411733195992 | 9223352541879458469 |
+| 69154     | 1037673  | 1457269075                | 691754198.8292391  | -9222942943452632831 | 9223121880512945368 |
+| 5822      | 1037577  | 1507330000                | 499031503.6938203  | -9221251372859339681 | 9222683096952890403 |
+| 1483      | 953754   | 1488581113                | 536916264.1378626  | -9222225582324279020 | 9223305987483385459 |
+| 128858    | 918847   | 1455469617                | 574146956.5097519  | -9219909450504070394 | 9223281383228192348 |
+| 190147    | 906972   | 1374284572                | 535717220.3001438  | -9220742289079206593 | 9223337174614582560 |
+| 117917    | 836928   | 1338389339                | 504229164.24259436 | -9221697809726755275 | 9223278921056450441 |
+| 140443    | 800629   | 1171100903                | 603489007.1068972  | -9219107325584650578 | 9222724320443902653 |
+| 7525      | 721310   | 1158645198                | 581026459.2789702  | -9221279140477359784 | 9223283516011928192 |
+| 256004    | 701789   | 1085322762                | 447919161.3892908  | -9222837552450474710 | 9223269811334780822 |
+| 62        | 671519   | 1071539420                | 630213038.1712118  | -9219054275930888834 | 9223258955477571344 |
+| 1095      | 663876   | 1032442903                | 474617708.51855767 | -9220868456983495476 | 9223011030100129785 |
+| 63217     | 654291   | 1035219776                | 528772410.193472   | -9222953906676075492 | 9222917033255998580 |
+| 3035      | 641111   | 880080266                 | 563970979.4483358  | -9222579484431160461 | 9223251115378221328 |
+| 132048    | 634657   | 1009496197                | 576126438.0492487  | -9223360918607336854 | 9223356537478078323 |
+| 95978     | 631537   | 873808435                 | 574827791.3929857  | -9223344277659414581 | 9223161510779360742 |
+| 186300    | 520191   | 828027220                 | 575313984.0301851  | -9222378406364091204 | 9223334595469392411 |
+| 146891    | 480900   | 717791742                 | 590065562.7974756  | -9222031466889386267 | 9222918268856352859 |
+| 226383    | 460241   | 727013898                 | 523767090.92059815 | -9216261718549834226 | 9223364125493659818 |
+| 163373    | 452769   | 497077287                 | 457446963.96624327 | -9223308501352264398 | 9223160689807097605 |
+| 135316    | 445732   | 651929333                 | 579802409.8134013  | -9222379336558706109 | 9223211195852902999 |
+| 190994    | 428332   | 679639468                 | 515716885.29911375 | -9220727380977332871 | 9223180426617519058 |
+| 96948     | 391724   | 608442784                 | 745293039.8965598  | -9219931312368108118 | 9223201849210885423 |
+| 220992    | 349551   | 538733066                 | 189094983.70629466 | -9208815724237318257 | 9222534799014302671 |
+| 56820     | 281653   | 375296949                 | 554983232.7167614  | -9219510007918356923 | 9223073870038724428 |
+| 44779     | 277295   | 431194710                 | 593203648.6582737  | -9219217901786969051 | 9223328267615370523 |
+| 2264      | 276324   | 391971588                 | 521948934.41942793 | -9222506155710409430 | 9223285090807786359 |
+| 180984    | 273749   | 427008951                 | 580176372.805581   | -9220760007512044352 | 9223222157736946805 |
+| 109363    | 271265   | 414988694                 | 620376339.6527492  | -9221464912395316444 | 9223140151779382655 |
+| 95427     | 262650   | 410822557                 | 517374509.42930514 | -9213707126627324353 | 9222268276290908332 |
+| 180215    | 260782   | 387610781                 | 632047524.6783482  | -9222159261305268509 | 9222147231107032881 |
+| 158401    | 259769   | 406253263                 | 508342213.27201474 | -9210545542825040110 | 9221490578562345718 |
+| 76325     | 258995   | 343109586                 | 618927001.7924516  | -9208077693383710261 | 9223057021953036435 |
+| 38        | 258103   | 413124070                 | 595149961.8993309  | -9214751021948998350 | 9222220959557218405 |
+| 121668    | 257995   | 370908672                 | 580115807.37905    | -9223344277659414581 | 9222689430320554375 |
+| 35534     | 256522   | 376698994                 | 528784160.80790734 | -9222533007323865344 | 9223062682422697315 |
+| 77639     | 248260   | 351078600                 | 541498459.4351044  | -9222859610726673510 | 9223222157736946805 |
+| 1060      | 247772   | 384804373                 | 585033197.5597203  | -9222077718927031550 | 9223211410241297629 |
+| 218267    | 233961   | 368402614                 | 545048321.5842171  | -9223140121085850272 | 9223350958296956768 |
+| 188878    | 233739   | 365193582                 | 406666479.1392921  | -9211262286914389340 | 9221202196045095241 |
+| 47290     | 233671   | 342320339                 | 542437377.2895439  | -9223141462922514222 | 9223032176062256297 |
+| 196224    | 227138   | 331809535                 | 498760269.7049503  | -9222684084728389486 | 9223035681241719685 |
+| 137682    | 216572   | 311389552                 | 533244661.57431245 | -9216808781562308452 | 9223156973214784720 |
+| 262004    | 201005   | 306907361                 | 632128976.7129126  | -9221347161997830618 | 9222911160710512740 |
+| 1634      | 198770   | 309726635                 | 581531795.9865171  | -9222055010781338364 | 9222745724455326045 |
+| 67476     | 192977   | 298224992                 | 634859742.6755261  | -9221107724032399225 | 9223195561235600876 |
+| 40206     | 184091   | 272202998                 | 547546116.0964577  | -9219746217193517963 | 9222771265453975771 |
+| 234004    | 177964   | 282622171                 | 469543026.06807554 | -9216692926449687586 | 9222951634718153876 |
+| 222436    | 174704   | 266988513                 | 659994454.560199   | -9179163174697806244 | 9217237690230600656 |
+| 245620    | 167898   | 240772554                 | 543915176.2346485  | -9219998449221996561 | 9222560996351939973 |
+| 40367     | 165495   | 258177160                 | 568977140.3346325  | -9219785195121081235 | 9222710303952416981 |
+| 230962    | 164837   | 234515561                 | 578928853.4509121  | -9222379336558706109 | 9223157625055330559 |
+| 196239    | 161468   | 235774520                 | 558701095.8368593  | -9202062231357422227 | 9222505521277593773 |
+| 148926    | 158710   | 233898313                 | 579088034.5789301  | -9213748710537331905 | 9223274311931800502 |
+| 162968    | 157687   | 247773957                 | 593836197.386132   | -9214471111029935779 | 9221515213529766473 |
+| 136213    | 155562   | 243340088                 | 550933430.8949357  | -9218797936899174875 | 9220939585324330250 |
+| 515       | 144879   | 0                         | 33341751.10080136  | -9212732240587657405 | 9222290370071727009 |
+| 159470    | 140185   | 238573785                 | 557306536.073774   | -9218499312438479990 | 9222114887739180081 |
+| 130273    | 139377   | 192998049                 | 602831358.778127   | -9219614395220980485 | 9223298339261107482 |
+| 220091    | 138483   | 213387663                 | 654889873.9276806  | -9219735935929844681 | 9222821688828331809 |
+| 252592    | 136760   | 210684935                 | 572602114.6053013  | -9217404644865839104 | 9222411929313885660 |
+| 251927    | 136718   | 215071172                 | 633532236.5871136  | -9181222879803742142 | 9222359998224142044 |
+| 256486    | 135019   | 210179679                 | 535204835.3677408  | -9221095754946536745 | 9221987299461560959 |
+| 63621     | 132485   | 201726306                 | 617446311.6710798  | -9218417840239440744 | 9222163720402304581 |
+| 105746    | 130240   | 200596078                 | 615470299.6828164  | -9117195525835474888 | 9217035138177152350 |
+| 97467     | 129996   | 201769662                 | 578246634.2355765  | -9204560739207379089 | 9223295003185418147 |
+| 258631    | 128584   | 91423504                  | 658532551.9637125  | -9219431016831528964 | 9223029612224199235 |
+| 78185     | 123800   | 184493867                 | 29979611.883424878 | -9213947883123536724 | 9220799660714201589 |
+| 191697    | 122125   | 189668884                 | 519751948.9637748  | -9219546544654074167 | 9222866579601096556 |
+| 76265     | 121496   | 177872175                 | 689515745.5183052  | -9208220438662750513 | 9222928859572656776 |
+| 786       | 119548   | 0                         | 549179463.585497   | -9167567564828250761 | 9223145304211283826 |
+| 125255    | 117997   | 157713616                 | 644795864.800961   | -9217166802383061772 | 9221680052571119028 |
+| 4635      | 115131   | 179380443                 | 537991421.0614778  | -9221140058421695091 | 9223181498201031493 |
+| 1830      | 111593   | 0                         | 444188440.95942396 | -9210089414629882110 | 9223011030100129785 |
+| 54312     | 107267   | 171194969                 | 510032548.56372416 | -9205731947124412904 | 9223228885409115872 |
+| 208744    | 103532   | 144676607                 | 581709538.5016806  | -9220582724175964669 | 9222319248016325744 |
+| 251755    | 102228   | 157249730                 | 635129117.8883867  | -9216259283599904409 | 9221841716197261760 |
+| 179818    | 101357   | 148274057                 | 561582781.7541167  | -9220915657702114877 | 9223056416222684334 |
+| 4714      | 100794   | 153482737                 | 569642265.8630474  | -9169897131735029821 | 9222639538364314079 |
+| 33626     | 99642    | 161679467                 | 572325279.8655788  | -9161811291475417555 | 9223080500927244738 |
+| 6221      | 98613    | 145578720                 | 593790573.2024987  | -9217751057548246102 | 9222616071696943949 |
+| 76221     | 98543    | 146944768                 | 426183926.6956557  | -9221190731827686976 | 9223295003185418147 |
+| 1805      | 97919    | 151912811                 | 581355288.330324   | -9222533007323865344 | 9223063030000668706 |
+| 230855    | 95647    | 146068946                 | 787517061.3445272  | -9222251953176095888 | 9222007220232220837 |
+| 57425     | 92870    | 145293478                 | 630648843.1941854  | -9215706595240223660 | 9221843257985697231 |
+| 178342    | 89428    | 142029761                 | 553413539.3894417  | -9192655909902302746 | 9222745290776311949 |
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+
+=== EXPLAIN ANALYZE (Query 2, Iteration 4) ===
+ProjectionExec: expr=[CounterID@0 as CounterID, count(*)@1 as count(*), sum(hits.ResolutionWidth)@2 as sum(hits.ResolutionWidth), avg(hits.ClientIP)@3 as avg(hits.ClientIP), min(hits.UserID)@4 as min(hits.UserID), max(hits.UserID)@5 as max(hits.UserID)], metrics=[output_rows=100, elapsed_compute=2.19µs, output_bytes=4.3 KB, output_batches=1, expr_0_eval_time=190ns, expr_1_eval_time=70ns, expr_2_eval_time=150ns, expr_3_eval_time=70ns, expr_4_eval_time=60ns, expr_5_eval_time=60ns]
+  SortPreservingMergeExec: [count(Int64(1))@6 DESC], fetch=100, metrics=[output_rows=100, elapsed_compute=15.19µs, output_bytes=5.1 KB, output_batches=1]
+    SortExec: TopK(fetch=100), expr=[count(*)@1 DESC], preserve_partitioning=[true], filter=[count(*)@1 IS NULL OR count(*)@1 > 1275], metrics=[output_rows=1.49 K, elapsed_compute=881.33µs, output_bytes=75.4 KB, output_batches=16, row_replacements=2.19 K]
+      ProjectionExec: expr=[CounterID@0 as CounterID, count(Int64(1))@1 as count(*), sum(hits.ResolutionWidth)@2 as sum(hits.ResolutionWidth), avg(hits.ClientIP)@3 as avg(hits.ClientIP), min(hits.UserID)@4 as min(hits.UserID), max(hits.UserID)@5 as max(hits.UserID), count(Int64(1))@1 as count(Int64(1))], metrics=[output_rows=6.50 K, elapsed_compute=38.36µs, output_bytes=286.1 KB, output_batches=16, expr_0_eval_time=3.34µs, expr_1_eval_time=1.58µs, expr_2_eval_time=1.54µs, expr_3_eval_time=1.25µs, expr_4_eval_time=1.28µs, expr_5_eval_time=1.20µs, expr_6_eval_time=1.14µs]
+        AggregateExec: mode=FinalPartitioned, gby=[CounterID@0 as CounterID], aggr=[count(Int64(1)), sum(hits.ResolutionWidth), avg(hits.ClientIP), min(hits.UserID), max(hits.UserID)], metrics=[output_rows=6.50 K, elapsed_compute=638.42µs, output_bytes=286.1 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, peak_mem_used=881.9 K, aggregate_arguments_time=44.20µs, aggregation_time=389.38µs, emitting_time=55.86µs, time_calculating_group_ids=234.67µs]
+          RepartitionExec: partitioning=Hash([CounterID@0], 16), input_partitions=16, metrics=[output_rows=6.74 K, elapsed_compute=805.61µs, output_bytes=6.5 MB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, fetch_time=4.11s, repartition_time=861.36µs, send_time=592.25µs]
+            AggregateExec: mode=Partial, gby=[CounterID@0 as CounterID], aggr=[count(Int64(1)), sum(hits.ResolutionWidth), avg(hits.ClientIP), min(hits.UserID), max(hits.UserID)], metrics=[output_rows=6.74 K, elapsed_compute=1.39s, output_bytes=494.2 KB, output_batches=16, spill_count=0, spilled_bytes=0.0 B, spilled_rows=0, skipped_aggregation_rows=0, peak_mem_used=1.63 M, aggregate_arguments_time=143.07ms, aggregation_time=1.62s, emitting_time=111.54µs, time_calculating_group_ids=638.50ms, reduction_factor=0.008% (6.74 K/83.91 M)]
+              DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[CounterID, ClientIP, UserID, ResolutionWidth], file_type=liquid_parquet, metrics=[output_rows=83.91 M, elapsed_compute=16ns, output_bytes=1441.0 MB, output_batches=12.22 K, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=508.8 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=4.16ms, metadata_load_time=3.21ms, page_index_eval_time=3.65µs, row_pushdown_eval_time=32ns, statistics_eval_time=480.64µs, time_elapsed_opening=10.64ms, time_elapsed_processing=2.39s, time_elapsed_scanning_total=4.10s, time_elapsed_scanning_until_data=93.15ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=24436, mem=383MB, disk=0MB
+  Hits: cache_hit=0, eval_predicate=24436
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 330ms
+
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+| CounterID | count(*) | sum(hits.ResolutionWidth) | avg(hits.ClientIP) | min(hits.UserID)     | max(hits.UserID)    |
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+
+| 199550    | 7008754  | 11000750426               | 526061615.11770093 | -9223346024853429862 | 9223371425449051681 |
+| 3922      | 5361252  | 8393158611                | 597269271.6404972  | -9223178030934747259 | 9223310216978545089 |
+| 105857    | 4177843  | 6673858410                | 570497720.4199646  | -9223140121085850272 | 9223363230269068491 |
+| 46429     | 3584953  | 5433637584                | 615188001.7601932  | -9223361817928421363 | 9223175814720670285 |
+| 122612    | 3542228  | 5367439224                | 542892346.2468649  | -9219567788895632964 | 9223323596402503223 |
+| 244045    | 3306517  | 5031073914                | 538446474.7601129  | -9223357932189777279 | 9223357816360387857 |
+| 225510    | 3205393  | 5171189987                | 562845975.3974967  | -9222586972143858525 | 9223324900102909551 |
+| 178321    | 2628236  | 4018884714                | 565884683.0126575  | -9215921826393574013 | 9223276268586242047 |
+| 245438    | 2446178  | 3584565635                | 577867363.6261944  | -9222028152060881928 | 9223290364457130352 |
+| 233773    | 2230709  | 3530320103                | 626762708.99691    | -9222607364038294503 | 9223328854322062683 |
+| 145496    | 2066529  | 2857655719                | 608215615.9204448  | -9221527730523596121 | 9222905909172755426 |
+| 99062     | 1394978  | 2158584462                | 572460191.2268666  | -9222309912477497029 | 9223325148563768236 |
+| 123906    | 1229349  | 1918969736                | 538507560.6318133  | -9222486292139758092 | 9223353962785668041 |
+| 119677    | 1108082  | 1549383385                | 572581699.2718445  | -9222196182830295817 | 9223370512262829419 |
+| 229540    | 1105062  | 1248220707                | 557994977.7382944  | -9219167411733195992 | 9223352541879458469 |
+| 69154     | 1037673  | 1457269075                | 691754198.8292391  | -9222942943452632831 | 9223121880512945368 |
+| 5822      | 1037577  | 1507330000                | 499031503.6938203  | -9221251372859339681 | 9222683096952890403 |
+| 1483      | 953754   | 1488581113                | 536916264.1378626  | -9222225582324279020 | 9223305987483385459 |
+| 128858    | 918847   | 1455469617                | 574146956.5097519  | -9219909450504070394 | 9223281383228192348 |
+| 190147    | 906972   | 1374284572                | 535717220.3001438  | -9220742289079206593 | 9223337174614582560 |
+| 117917    | 836928   | 1338389339                | 504229164.24259436 | -9221697809726755275 | 9223278921056450441 |
+| 140443    | 800629   | 1171100903                | 603489007.1068972  | -9219107325584650578 | 9222724320443902653 |
+| 7525      | 721310   | 1158645198                | 581026459.2789702  | -9221279140477359784 | 9223283516011928192 |
+| 256004    | 701789   | 1085322762                | 447919161.3892908  | -9222837552450474710 | 9223269811334780822 |
+| 62        | 671519   | 1071539420                | 630213038.1712118  | -9219054275930888834 | 9223258955477571344 |
+| 1095      | 663876   | 1032442903                | 474617708.51855767 | -9220868456983495476 | 9223011030100129785 |
+| 63217     | 654291   | 1035219776                | 528772410.193472   | -9222953906676075492 | 9222917033255998580 |
+| 3035      | 641111   | 880080266                 | 563970979.4483358  | -9222579484431160461 | 9223251115378221328 |
+| 132048    | 634657   | 1009496197                | 576126438.0492487  | -9223360918607336854 | 9223356537478078323 |
+| 95978     | 631537   | 873808435                 | 574827791.3929857  | -9223344277659414581 | 9223161510779360742 |
+| 186300    | 520191   | 828027220                 | 575313984.0301851  | -9222378406364091204 | 9223334595469392411 |
+| 146891    | 480900   | 717791742                 | 590065562.7974756  | -9222031466889386267 | 9222918268856352859 |
+| 226383    | 460241   | 727013898                 | 523767090.92059815 | -9216261718549834226 | 9223364125493659818 |
+| 163373    | 452769   | 497077287                 | 457446963.96624327 | -9223308501352264398 | 9223160689807097605 |
+| 135316    | 445732   | 651929333                 | 579802409.8134013  | -9222379336558706109 | 9223211195852902999 |
+| 190994    | 428332   | 679639468                 | 515716885.29911375 | -9220727380977332871 | 9223180426617519058 |
+| 96948     | 391724   | 608442784                 | 745293039.8965598  | -9219931312368108118 | 9223201849210885423 |
+| 220992    | 349551   | 538733066                 | 189094983.70629466 | -9208815724237318257 | 9222534799014302671 |
+| 56820     | 281653   | 375296949                 | 554983232.7167614  | -9219510007918356923 | 9223073870038724428 |
+| 44779     | 277295   | 431194710                 | 593203648.6582737  | -9219217901786969051 | 9223328267615370523 |
+| 2264      | 276324   | 391971588                 | 521948934.41942793 | -9222506155710409430 | 9223285090807786359 |
+| 180984    | 273749   | 427008951                 | 580176372.805581   | -9220760007512044352 | 9223222157736946805 |
+| 109363    | 271265   | 414988694                 | 620376339.6527492  | -9221464912395316444 | 9223140151779382655 |
+| 95427     | 262650   | 410822557                 | 517374509.42930514 | -9213707126627324353 | 9222268276290908332 |
+| 180215    | 260782   | 387610781                 | 632047524.6783482  | -9222159261305268509 | 9222147231107032881 |
+| 158401    | 259769   | 406253263                 | 508342213.27201474 | -9210545542825040110 | 9221490578562345718 |
+| 76325     | 258995   | 343109586                 | 618927001.7924516  | -9208077693383710261 | 9223057021953036435 |
+| 38        | 258103   | 413124070                 | 595149961.8993309  | -9214751021948998350 | 9222220959557218405 |
+| 121668    | 257995   | 370908672                 | 580115807.37905    | -9223344277659414581 | 9222689430320554375 |
+| 35534     | 256522   | 376698994                 | 528784160.80790734 | -9222533007323865344 | 9223062682422697315 |
+| 77639     | 248260   | 351078600                 | 541498459.4351044  | -9222859610726673510 | 9223222157736946805 |
+| 1060      | 247772   | 384804373                 | 585033197.5597203  | -9222077718927031550 | 9223211410241297629 |
+| 218267    | 233961   | 368402614                 | 545048321.5842171  | -9223140121085850272 | 9223350958296956768 |
+| 188878    | 233739   | 365193582                 | 406666479.1392921  | -9211262286914389340 | 9221202196045095241 |
+| 47290     | 233671   | 342320339                 | 542437377.2895439  | -9223141462922514222 | 9223032176062256297 |
+| 196224    | 227138   | 331809535                 | 498760269.7049503  | -9222684084728389486 | 9223035681241719685 |
+| 137682    | 216572   | 311389552                 | 533244661.57431245 | -9216808781562308452 | 9223156973214784720 |
+| 262004    | 201005   | 306907361                 | 632128976.7129126  | -9221347161997830618 | 9222911160710512740 |
+| 1634      | 198770   | 309726635                 | 581531795.9865171  | -9222055010781338364 | 9222745724455326045 |
+| 67476     | 192977   | 298224992                 | 634859742.6755261  | -9221107724032399225 | 9223195561235600876 |
+| 40206     | 184091   | 272202998                 | 547546116.0964577  | -9219746217193517963 | 9222771265453975771 |
+| 234004    | 177964   | 282622171                 | 469543026.06807554 | -9216692926449687586 | 9222951634718153876 |
+| 222436    | 174704   | 266988513                 | 659994454.560199   | -9179163174697806244 | 9217237690230600656 |
+| 245620    | 167898   | 240772554                 | 543915176.2346485  | -9219998449221996561 | 9222560996351939973 |
+| 40367     | 165495   | 258177160                 | 568977140.3346325  | -9219785195121081235 | 9222710303952416981 |
+| 230962    | 164837   | 234515561                 | 578928853.4509121  | -9222379336558706109 | 9223157625055330559 |
+| 196239    | 161468   | 235774520                 | 558701095.8368593  | -9202062231357422227 | 9222505521277593773 |
+| 148926    | 158710   | 233898313                 | 579088034.5789301  | -9213748710537331905 | 9223274311931800502 |
+| 162968    | 157687   | 247773957                 | 593836197.386132   | -9214471111029935779 | 9221515213529766473 |
+| 136213    | 155562   | 243340088                 | 550933430.8949357  | -9218797936899174875 | 9220939585324330250 |
+| 515       | 144879   | 0                         | 33341751.10080136  | -9212732240587657405 | 9222290370071727009 |
+| 159470    | 140185   | 238573785                 | 557306536.073774   | -9218499312438479990 | 9222114887739180081 |
+| 130273    | 139377   | 192998049                 | 602831358.778127   | -9219614395220980485 | 9223298339261107482 |
+| 220091    | 138483   | 213387663                 | 654889873.9276806  | -9219735935929844681 | 9222821688828331809 |
+| 252592    | 136760   | 210684935                 | 572602114.6053013  | -9217404644865839104 | 9222411929313885660 |
+| 251927    | 136718   | 215071172                 | 633532236.5871136  | -9181222879803742142 | 9222359998224142044 |
+| 256486    | 135019   | 210179679                 | 535204835.3677408  | -9221095754946536745 | 9221987299461560959 |
+| 63621     | 132485   | 201726306                 | 617446311.6710798  | -9218417840239440744 | 9222163720402304581 |
+| 105746    | 130240   | 200596078                 | 615470299.6828164  | -9117195525835474888 | 9217035138177152350 |
+| 97467     | 129996   | 201769662                 | 578246634.2355765  | -9204560739207379089 | 9223295003185418147 |
+| 258631    | 128584   | 91423504                  | 658532551.9637125  | -9219431016831528964 | 9223029612224199235 |
+| 78185     | 123800   | 184493867                 | 29979611.883424878 | -9213947883123536724 | 9220799660714201589 |
+| 191697    | 122125   | 189668884                 | 519751948.9637748  | -9219546544654074167 | 9222866579601096556 |
+| 76265     | 121496   | 177872175                 | 689515745.5183052  | -9208220438662750513 | 9222928859572656776 |
+| 786       | 119548   | 0                         | 549179463.585497   | -9167567564828250761 | 9223145304211283826 |
+| 125255    | 117997   | 157713616                 | 644795864.800961   | -9217166802383061772 | 9221680052571119028 |
+| 4635      | 115131   | 179380443                 | 537991421.0614778  | -9221140058421695091 | 9223181498201031493 |
+| 1830      | 111593   | 0                         | 444188440.95942396 | -9210089414629882110 | 9223011030100129785 |
+| 54312     | 107267   | 171194969                 | 510032548.56372416 | -9205731947124412904 | 9223228885409115872 |
+| 208744    | 103532   | 144676607                 | 581709538.5016806  | -9220582724175964669 | 9222319248016325744 |
+| 251755    | 102228   | 157249730                 | 635129117.8883867  | -9216259283599904409 | 9221841716197261760 |
+| 179818    | 101357   | 148274057                 | 561582781.7541167  | -9220915657702114877 | 9223056416222684334 |
+| 4714      | 100794   | 153482737                 | 569642265.8630474  | -9169897131735029821 | 9222639538364314079 |
+| 33626     | 99642    | 161679467                 | 572325279.8655788  | -9161811291475417555 | 9223080500927244738 |
+| 6221      | 98613    | 145578720                 | 593790573.2024987  | -9217751057548246102 | 9222616071696943949 |
+| 76221     | 98543    | 146944768                 | 426183926.6956557  | -9221190731827686976 | 9223295003185418147 |
+| 1805      | 97919    | 151912811                 | 581355288.330324   | -9222533007323865344 | 9223063030000668706 |
+| 230855    | 95647    | 146068946                 | 787517061.3445272  | -9222251953176095888 | 9222007220232220837 |
+| 57425     | 92870    | 145293478                 | 630648843.1941854  | -9215706595240223660 | 9221843257985697231 |
+| 178342    | 89428    | 142029761                 | 553413539.3894417  | -9192655909902302746 | 9222745290776311949 |
++-----------+----------+---------------------------+--------------------+----------------------+---------------------+

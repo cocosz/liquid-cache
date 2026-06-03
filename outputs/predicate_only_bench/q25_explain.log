@@ -1,0 +1,135 @@
+
+=== EXPLAIN ANALYZE (Query 25, Iteration 0) ===
+SortPreservingMergeExec: [SearchPhrase@0 ASC NULLS LAST], fetch=10, metrics=[output_rows=10, elapsed_compute=9.14µs, output_bytes=404.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[SearchPhrase@0 ASC NULLS LAST], preserve_partitioning=[true], filter=[SearchPhrase@0 < $_posten of greenjera mi 300 мегафонов (1944-105 отзывы], metrics=[output_rows=134, elapsed_compute=3.38ms, output_bytes=5.0 KB, output_batches=16, row_replacements=370]
+    DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[SearchPhrase], file_type=liquid_parquet, metrics=[output_rows=1.18 K, elapsed_compute=16ns, output_bytes=52.9 KB, output_batches=163, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=373.1 M, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.11ms, metadata_load_time=239.16ms, page_index_eval_time=2.81µs, row_pushdown_eval_time=32ns, statistics_eval_time=385.01µs, time_elapsed_opening=257.76ms, time_elapsed_processing=4.91s, time_elapsed_scanning_total=5.15s, time_elapsed_scanning_until_data=309.07ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=1631MB, disk=0MB
+  Hits: cache_hit=163, eval_predicate=36578
+  Misses: cache_miss=12218
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 425ms
+
++-----------------------------------------+
+| SearchPhrase                            |
++-----------------------------------------+
+|  береж                                  |
+|  за русский стил видео какой            |
+|  завод тандалищные прода                |
+|  заочное по земли в обрезни и метро     |
+|  заочное сад цены нарощения музыка визу |
+|  зве                                    |
+|  земные огурцы раб                      |
+|  золотой сайт samsung                   |
+|  прав                                   |
+|  светы женске 2 сезон                   |
++-----------------------------------------+
+
+=== EXPLAIN ANALYZE (Query 25, Iteration 1) ===
+SortPreservingMergeExec: [SearchPhrase@0 ASC NULLS LAST], fetch=10, metrics=[output_rows=10, elapsed_compute=8.68µs, output_bytes=404.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[SearchPhrase@0 ASC NULLS LAST], preserve_partitioning=[true], filter=[SearchPhrase@0 < $_posten of greenjera mi 300 мегафонов (1944-105 отзывы], metrics=[output_rows=130, elapsed_compute=969.68µs, output_bytes=5.6 KB, output_batches=15, row_replacements=289]
+    DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[SearchPhrase], file_type=liquid_parquet, metrics=[output_rows=4.87 K, elapsed_compute=16ns, output_bytes=296.3 KB, output_batches=137, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=0, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.40ms, metadata_load_time=2.11ms, page_index_eval_time=3.52µs, row_pushdown_eval_time=32ns, statistics_eval_time=429.86µs, time_elapsed_opening=6.89ms, time_elapsed_processing=991.17ms, time_elapsed_scanning_total=985.33ms, time_elapsed_scanning_until_data=46.65ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=1631MB, disk=0MB
+  Hits: cache_hit=137, eval_predicate=24360
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 92ms
+
++-----------------------------------------+
+| SearchPhrase                            |
++-----------------------------------------+
+|  береж                                  |
+|  за русский стил видео какой            |
+|  завод тандалищные прода                |
+|  заочное по земли в обрезни и метро     |
+|  заочное сад цены нарощения музыка визу |
+|  зве                                    |
+|  земные огурцы раб                      |
+|  золотой сайт samsung                   |
+|  прав                                   |
+|  светы женске 2 сезон                   |
++-----------------------------------------+
+
+=== EXPLAIN ANALYZE (Query 25, Iteration 2) ===
+SortPreservingMergeExec: [SearchPhrase@0 ASC NULLS LAST], fetch=10, metrics=[output_rows=10, elapsed_compute=7.94µs, output_bytes=404.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[SearchPhrase@0 ASC NULLS LAST], preserve_partitioning=[true], filter=[SearchPhrase@0 < $_posten of greenjera mi 300 мегафонов (1944-105 отзывы], metrics=[output_rows=132, elapsed_compute=857.34µs, output_bytes=5.5 KB, output_batches=15, row_replacements=292]
+    DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[SearchPhrase], file_type=liquid_parquet, metrics=[output_rows=1.90 K, elapsed_compute=16ns, output_bytes=108.5 KB, output_batches=140, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=0, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.28ms, metadata_load_time=2.03ms, page_index_eval_time=3.06µs, row_pushdown_eval_time=32ns, statistics_eval_time=380.44µs, time_elapsed_opening=6.38ms, time_elapsed_processing=980.20ms, time_elapsed_scanning_total=974.77ms, time_elapsed_scanning_until_data=90.03ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=1631MB, disk=0MB
+  Hits: cache_hit=140, eval_predicate=24360
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 84ms
+
++-----------------------------------------+
+| SearchPhrase                            |
++-----------------------------------------+
+|  береж                                  |
+|  за русский стил видео какой            |
+|  завод тандалищные прода                |
+|  заочное по земли в обрезни и метро     |
+|  заочное сад цены нарощения музыка визу |
+|  зве                                    |
+|  земные огурцы раб                      |
+|  золотой сайт samsung                   |
+|  прав                                   |
+|  светы женске 2 сезон                   |
++-----------------------------------------+
+
+=== EXPLAIN ANALYZE (Query 25, Iteration 3) ===
+SortPreservingMergeExec: [SearchPhrase@0 ASC NULLS LAST], fetch=10, metrics=[output_rows=10, elapsed_compute=8.27µs, output_bytes=404.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[SearchPhrase@0 ASC NULLS LAST], preserve_partitioning=[true], filter=[SearchPhrase@0 < $_posten of greenjera mi 300 мегафонов (1944-105 отзывы], metrics=[output_rows=130, elapsed_compute=854.07µs, output_bytes=5.5 KB, output_batches=15, row_replacements=310]
+    DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[SearchPhrase], file_type=liquid_parquet, metrics=[output_rows=926, elapsed_compute=16ns, output_bytes=55.6 KB, output_batches=144, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=0, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.41ms, metadata_load_time=2.01ms, page_index_eval_time=3.36µs, row_pushdown_eval_time=32ns, statistics_eval_time=384.36µs, time_elapsed_opening=6.52ms, time_elapsed_processing=983.89ms, time_elapsed_scanning_total=978.30ms, time_elapsed_scanning_until_data=89.58ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=1631MB, disk=0MB
+  Hits: cache_hit=144, eval_predicate=24360
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 87ms
+
++-----------------------------------------+
+| SearchPhrase                            |
++-----------------------------------------+
+|  береж                                  |
+|  за русский стил видео какой            |
+|  завод тандалищные прода                |
+|  заочное по земли в обрезни и метро     |
+|  заочное сад цены нарощения музыка визу |
+|  зве                                    |
+|  земные огурцы раб                      |
+|  золотой сайт samsung                   |
+|  прав                                   |
+|  светы женске 2 сезон                   |
++-----------------------------------------+
+
+=== EXPLAIN ANALYZE (Query 25, Iteration 4) ===
+SortPreservingMergeExec: [SearchPhrase@0 ASC NULLS LAST], fetch=10, metrics=[output_rows=10, elapsed_compute=8.43µs, output_bytes=404.0 B, output_batches=1]
+  SortExec: TopK(fetch=10), expr=[SearchPhrase@0 ASC NULLS LAST], preserve_partitioning=[true], filter=[SearchPhrase@0 < $_posten of greenjera mi 300 мегафонов (1944-105 отзывы], metrics=[output_rows=127, elapsed_compute=846.36µs, output_bytes=5.2 KB, output_batches=15, row_replacements=272]
+    DataSourceExec: file_groups={16 groups: [[home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:0..923748528], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:923748528..1847497056], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:1847497056..2771245584], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:2771245584..3694994112], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:3694994112..4618742640], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:4618742640..5542491168], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:5542491168..6466239696], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:6466239696..7389988224], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:7389988224..8313736752], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:8313736752..9237485280], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:9237485280..10161233808], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:10161233808..11084982336], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:11084982336..12008730864], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12008730864..12932479392], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:12932479392..13856227920], [home/ec2-user/liquid-cache/benchmark/clickbench/data/hits.parquet:13856227920..14779976446]]}, projection=[SearchPhrase], file_type=liquid_parquet, metrics=[output_rows=1.09 K, elapsed_compute=16ns, output_bytes=63.8 KB, output_batches=145, files_ranges_pruned_statistics=16 total → 16 matched, row_groups_pruned_statistics=226 total → 226 matched, row_groups_pruned_bloom_filter=0 total → 0 matched, page_index_pages_pruned=0 total → 0 matched, page_index_rows_pruned=0 total → 0 matched, limit_pruned_row_groups=0 total → 0 matched, batches_split=0, bytes_scanned=0, file_open_errors=0, file_scan_errors=0, num_predicate_creation_errors=0, predicate_evaluation_errors=0, pushdown_rows_matched=0, pushdown_rows_pruned=0, predicate_cache_inner_records=0, predicate_cache_records=0, bloom_filter_eval_time=2.53ms, metadata_load_time=2.32ms, page_index_eval_time=3.25µs, row_pushdown_eval_time=32ns, statistics_eval_time=394.24µs, time_elapsed_opening=27.12ms, time_elapsed_processing=980.59ms, time_elapsed_scanning_total=954.40ms, time_elapsed_scanning_until_data=79.73ms, scan_efficiency_ratio=N/A (0/0)]
+
+Cache: entries=12218, mem=1631MB, disk=0MB
+  Hits: cache_hit=145, eval_predicate=24360
+  Misses: cache_miss=0
+  IO: read=0, write=0
+  Squeeze: squeezed_success=0, squeezed_needs_io=0
+Time: 83ms
+
++-----------------------------------------+
+| SearchPhrase                            |
++-----------------------------------------+
+|  береж                                  |
+|  за русский стил видео какой            |
+|  завод тандалищные прода                |
+|  заочное по земли в обрезни и метро     |
+|  заочное сад цены нарощения музыка визу |
+|  зве                                    |
+|  земные огурцы раб                      |
+|  золотой сайт samsung                   |
+|  прав                                   |
+|  светы женске 2 сезон                   |
++-----------------------------------------+

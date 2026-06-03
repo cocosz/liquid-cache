@@ -1,0 +1,180 @@
+RFC: Disk Budget Eviction with Lease-Based Safety
+==================================================
+
+PROBLEM
+
+LiquidCache currently has no disk size limit. When memory is full, entries are squeezed to disk (MemoryArrow -> DiskLiquid), but disk grows unbounded. On long-running systems, this eventually fills the disk.
+
+Adding a naive disk size limit creates a race condition: if we evict (delete) disk entries while a concurrent query is reading them, the query breaks.
+
+
+WHY THIS IS TRICKY
+
+LiquidCache's read path has a two-phase contract per row group:
+
+  1. FillCache -- identify missing batches, fetch them all from Parquet into cache
+  2. ReadFromCache -- read everything from cache, no fallback to Parquet
+
+Once a query enters phase 2, it assumes all its batches exist in the cache index. Today this is safe because memory eviction (squeeze) only replaces entries in the index (MemoryArrow -> DiskLiquid) -- it never removes them. But disk eviction must remove entries entirely, which would cause index.get() to return None mid-query.
+
+
+Concrete Example:
+
+  T1  Query 1 fills cache with batches B0-B3 (on disk, 400 MB used)
+  T2  Query 1 enters ReadFromCache, starts reading B0, B1...
+  T3  Query 2 starts filling cache, disk hits 500 MB limit
+  T4  Disk eviction removes B2 (Query 1 hasn't read it yet)
+  T5  Query 1 tries to read B2 -> index.get() returns None -> CRASH
+
+
+Code Path:
+
+  - LiquidStream::poll_next transitions to ReadFromCache state (liquid_stream.rs:654)
+  - LiquidCacheReader reads batches via column.get_arrow_array_with_filter (liquid_cache_reader.rs:247)
+  - Which calls cache_store.get(&entry_id).read() (column.rs:184)
+  - Which calls index.get(entry_id)? (core.rs:496) -- returns None if evicted
+
+
+PROPOSED SOLUTION: LEASE-BASED DISK EVICTION
+=============================================
+
+Core Idea:
+
+Before a query starts reading from cache, it acquires a "lease" on the entries it needs. Disk eviction skips leased entries. Leases are released automatically when the reader finishes (RAII via Drop).
+
+The eviction policy decides WHAT to evict. The lease tracker decides WHETHER it's safe right now. Clean separation.
+
+
+NEW COMPONENTS
+
+1. LeaseTracker (new struct in src/core/src/cache/lease.rs)
+
+A concurrent map of EntryID -> AtomicUsize tracking how many active readers hold each entry.
+
+  - acquire(entry_id) -- increment the reader count
+  - release(entry_id) -- decrement the reader count
+  - is_leased(entry_id) -- returns true if count > 0
+
+
+2. CacheLease (RAII handle)
+
+Held by a reader for its lifetime. Contains a Vec<EntryID> and an Arc<LeaseTracker>. On Drop, it calls release() for every entry. This means leases are freed automatically when the reader finishes, errors, or panics.
+
+
+3. Disk budget in BudgetAccounting (src/core/src/cache/budget.rs)
+
+Mirror the existing memory budget with watermark thresholds:
+
+  - max_disk_bytes -- hard disk limit
+  - low_watermark_bytes -- e.g. 70% of max_disk_bytes
+  - high_watermark_bytes -- e.g. 90% of max_disk_bytes
+  - try_reserve_disk(bytes) -- try to reserve disk space
+  - sub_used_disk_bytes(bytes) -- free disk space after eviction
+  - above_low_watermark() -- check if we've crossed the soft threshold
+  - above_high_watermark() -- check if we've crossed the hard threshold
+
+
+MODIFIED COMPONENTS
+
+4. LiquidCache struct (src/core/src/cache/core.rs)
+
+Add lease_tracker: Arc<LeaseTracker> field.
+
+
+5. LiquidCacheReader (src/datafusion/src/reader/runtime/liquid_cache_reader.rs)
+
+Add _lease: CacheLease field. On construction, compute all (column, batch) EntryIDs this reader will access and acquire a lease. The lease is held for the reader's lifetime and released on Drop.
+
+
+6. Watermark-Based Disk Eviction (src/core/src/cache/core.rs)
+
+Two-watermark system to avoid a hard cliff between "fully cached" and "reading raw Parquet":
+
+  Low watermark (soft threshold, e.g. 70%):
+    - A background task starts evicting unleased entries best-effort
+    - Queries keep caching normally
+    - Goal: proactively make room before it's urgent
+
+  High watermark (hard threshold, e.g. 90%):
+    - Eviction runs inline during write_batch_to_disk
+    - If we still can't free enough (everything leased), new inserts skip caching
+      and fall back to direct Parquet reads
+
+  Both paths use the same logic:
+    - Ask cache_policy.find_disk_victims() for candidates
+    - For each candidate, check lease_tracker.is_leased()
+    - If leased: skip (active reader)
+    - If not leased: remove from index, delete from t4::Store, free disk budget
+
+
+7. CachePolicy trait (src/core/src/cache/policies/cache/mod.rs)
+
+Add find_disk_victims(cnt) method for disk victim selection (default: empty vec).
+
+
+8. IoContext trait (src/core/src/cache/io_context.rs)
+
+Add delete(entry_id) method that removes data from t4::Store and returns freed bytes.
+
+
+FLOW COMPARISON
+
+                  Memory eviction (today)       Disk eviction (proposed)
+                  -----------------------       --------------------------
+  Trigger         memory budget full            low watermark: background
+                                                high watermark: inline
+  Who decides     cache_policy.find_victim      cache_policy.find_disk_victims
+  Lease check     not needed                    REQUIRED
+  What happens    entry squeezed, replaced      entry REMOVED from index,
+                  in index (still findable)     DELETED from t4::Store
+  Entry after     DiskLiquid (still in index)   gone entirely
+
+
+EDGE CASES
+
+All disk entries are leased (everything in use):
+  At high watermark, the inserting query skips caching and reads directly from Parquet.
+  At low watermark, the background task simply stops and retries later.
+  Correctness over space efficiency.
+
+Disk usage between low and high watermark:
+  Background eviction is running but queries cache normally. This is the steady-state
+  under moderate load -- proactive cleanup without impacting query performance.
+
+Long-running query holds leases for a long time:
+  Delays eviction of those entries. Acceptable trade-off. A future enhancement could
+  add lease timeouts or warnings for abnormally long-held leases.
+
+Query errors or panics mid-read:
+  CacheLease uses Drop, so leases are released even on panic unwind. No leaked leases.
+
+
+IMPLEMENTATION ORDER
+
+  1. LeaseTracker + CacheLease (pure addition, no behavior change)
+  2. Disk budget tracking in BudgetAccounting (add max_disk_bytes, try_reserve_disk)
+  3. IoContext::delete (add to trait + DefaultIoContext impl)
+  4. CachePolicy::find_disk_victims (add to trait, implement in policies)
+  5. Wire lease acquire/release into LiquidCacheReader
+  6. Disk eviction loop in LiquidCache
+  7. ArtIndex::remove method
+
+Steps 1-4 are additive and can be reviewed independently. Steps 5-7 are the behavioral change.
+
+
+OPEN QUESTIONS
+
+  1. Lease granularity: Per-entry (proposed) vs per-row-group? Per-entry is more
+     flexible but has more overhead. Per-row-group is simpler but blocks eviction
+     of entries that aren't actually being read.
+
+  2. Disk victim selection policy: Should find_disk_victims reuse the same LRU/SIEVE
+     logic as memory victims, or use a separate policy? Disk entries are cold by
+     definition (already evicted from memory), so the access pattern may differ.
+
+  3. Watermark defaults: What are sensible defaults for low/high watermarks? 70%/90%?
+     Should they be user-configurable from the start?
+
+  4. Background task frequency: How often should the background eviction task check
+     disk usage? Timer-based (e.g. every 5s), or event-driven (triggered when a
+     write crosses the low watermark)?

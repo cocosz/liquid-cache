@@ -122,6 +122,7 @@ impl FileOpener for LiquidParquetOpener {
         let file_range = partitioned_file.range.clone();
         let extensions = partitioned_file.extensions.clone();
         let file_name = partitioned_file.object_meta.location.to_string();
+        eprintln!("[LiquidParquetOpener] open called for file: {}", file_name);
         let file_metrics = ParquetFileMetrics::new(self.partition_index, &file_name, &self.metrics);
 
         let metadata_size_hint = partitioned_file.metadata_size_hint;
@@ -346,7 +347,8 @@ impl FileOpener for LiquidParquetOpener {
                 liquid_builder = liquid_builder.with_span(span);
             }
 
-            let liquid_cache = lc.register_or_get_file(file_loc, Arc::clone(&cache_full_schema));
+            let liquid_cache = lc.register_or_get_file(file_loc.clone(), Arc::clone(&cache_full_schema));
+            eprintln!("[LiquidParquetOpener] registered file: {}, batch_size={}", file_loc, batch_size);
 
             let stream = liquid_builder.build(liquid_cache)?;
 
