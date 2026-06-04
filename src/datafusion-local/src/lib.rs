@@ -15,13 +15,12 @@ use liquid_cache::cache::{AlwaysHydrate, HydrationPolicy, default_max_memory_byt
 use liquid_cache::cache_policies::{CachePolicy, LiquidPolicy};
 use liquid_cache_datafusion::optimizers::{LineageOptimizer, LocalModeOptimizer};
 use liquid_cache_datafusion::{
-    LiquidCacheParquet, LiquidCacheParquetRef, VariantGetUdf, VariantPretty, VariantToJsonUdf,
+    LiquidCacheParquet, VariantGetUdf, VariantPretty, VariantToJsonUdf,
 };
 
 pub use liquid_cache as storage;
 pub use liquid_cache_common as common;
-pub use liquid_cache_datafusion::LiquidParquetSource;
-pub use liquid_cache_datafusion::LiquidCacheParquetRef;
+pub use liquid_cache_datafusion::{LiquidCacheParquetRef, LiquidParquetSource};
 
 /// Builder for in-process liquid cache session context
 ///
