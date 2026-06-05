@@ -901,7 +901,18 @@ fn lineage_for_expr(
             if let Some(usages) = input_lineage.get(&key) {
                 Ok(usages.clone())
             } else {
-                let field = schema.field_from_column(column)?;
+                // Try qualified lookup first, then fall back to unqualified.
+                // On the indexed path, substrait decoding produces table-qualified
+                // column references (e.g. clickbench."CounterID") but the DFSchema
+                // registered by PlaceholderProvider may only have unqualified names.
+                let field = schema.field_from_column(column).or_else(|e| {
+                    eprintln!(
+                        "[LineageOptimizer] field_from_column failed for {:?}.{:?}, trying unqualified fallback. Error: {}",
+                        column.relation, column.name, e
+                    );
+                    let unqualified = datafusion::common::Column::new_unqualified(&column.name);
+                    schema.field_from_column(&unqualified)
+                })?;
                 Ok(vec![ColumnUsage::new_base(
                     column,
                     field.data_type().clone(),
