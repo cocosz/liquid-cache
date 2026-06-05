@@ -20,6 +20,8 @@ use datafusion::{
 };
 pub use lineage_opt::LineageOptimizer;
 
+use arrow_schema::DataType;
+
 use crate::{
     LiquidCacheParquetRef, LiquidParquetSource,
     optimizers::lineage_opt::{ColumnAnnotation, metadata_from_factory, serialize_date_part},
@@ -89,6 +91,18 @@ fn try_optimize_parquet_source(
         && let Some((file_scan_config, parquet_source)) =
             data_source_exec.downcast_to_file_source::<ParquetSource>()
     {
+        // Skip LC rewrite if all projected columns are uncacheable (string/binary).
+        // These columns are never stored in the cache, so going through the LC
+        // reader machinery adds pure overhead with no benefit.
+        let file_schema = file_scan_config.file_schema();
+        let has_cacheable_column = file_schema
+            .fields()
+            .iter()
+            .any(|field| !is_uncacheable_type(field.data_type()));
+        if !has_cacheable_column {
+            return Ok(Transformed::no(plan));
+        }
+
         let mut new_config = file_scan_config.clone();
 
         let mut new_source =
@@ -113,6 +127,17 @@ fn try_optimize_parquet_source(
         ));
     }
     Ok(Transformed::no(plan))
+}
+
+/// Returns true if the given data type is never cached by Liquid Cache.
+/// String, binary, and dictionary-of-string/binary types are uncacheable.
+pub fn is_uncacheable_type(dt: &DataType) -> bool {
+    match dt {
+        DataType::Utf8 | DataType::Utf8View | DataType::LargeUtf8 => true,
+        DataType::Binary | DataType::BinaryView | DataType::LargeBinary => true,
+        DataType::Dictionary(_, value_type) => is_uncacheable_type(value_type.as_ref()),
+        _ => false,
+    }
 }
 
 fn enrich_source_schema(
@@ -162,13 +187,12 @@ mod tests {
 
     use super::*;
 
-    async fn rewrite_plan_inner(plan: Arc<dyn ExecutionPlan>) {
-        let expected_schema = plan.schema();
+    async fn create_test_cache() -> LiquidCacheParquetRef {
         let tmp_dir = tempfile::tempdir().unwrap();
         let store = t4::mount(tmp_dir.path().join("liquid_cache.t4"))
             .await
             .unwrap();
-        let liquid_cache = Arc::new(
+        Arc::new(
             LiquidCacheParquet::new(
                 8192,
                 1000000,
@@ -179,7 +203,12 @@ mod tests {
                 Box::new(AlwaysHydrate::new()),
             )
             .await,
-        );
+        )
+    }
+
+    async fn rewrite_plan_inner(plan: Arc<dyn ExecutionPlan>) {
+        let expected_schema = plan.schema();
+        let liquid_cache = create_test_cache().await;
         let rewritten = rewrite_data_source_plan(plan, &liquid_cache);
 
         rewritten
@@ -217,5 +246,128 @@ mod tests {
             .unwrap();
         let plan = df.create_physical_plan().await.unwrap();
         rewrite_plan_inner(plan.clone()).await;
+    }
+
+    #[test]
+    fn test_is_uncacheable_type() {
+        use arrow_schema::DataType;
+
+        // String/binary types are uncacheable
+        assert!(is_uncacheable_type(&DataType::Utf8));
+        assert!(is_uncacheable_type(&DataType::Utf8View));
+        assert!(is_uncacheable_type(&DataType::LargeUtf8));
+        assert!(is_uncacheable_type(&DataType::Binary));
+        assert!(is_uncacheable_type(&DataType::BinaryView));
+        assert!(is_uncacheable_type(&DataType::LargeBinary));
+
+        // Dictionary wrapping string is uncacheable
+        assert!(is_uncacheable_type(&DataType::Dictionary(
+            Box::new(DataType::Int32),
+            Box::new(DataType::Utf8),
+        )));
+
+        // Numeric types are cacheable (not uncacheable)
+        assert!(!is_uncacheable_type(&DataType::Int8));
+        assert!(!is_uncacheable_type(&DataType::Int16));
+        assert!(!is_uncacheable_type(&DataType::Int32));
+        assert!(!is_uncacheable_type(&DataType::Int64));
+        assert!(!is_uncacheable_type(&DataType::UInt32));
+        assert!(!is_uncacheable_type(&DataType::Float32));
+        assert!(!is_uncacheable_type(&DataType::Float64));
+        assert!(!is_uncacheable_type(&DataType::Date32));
+        assert!(!is_uncacheable_type(&DataType::Boolean));
+
+        // Dictionary wrapping numeric is cacheable
+        assert!(!is_uncacheable_type(&DataType::Dictionary(
+            Box::new(DataType::Int32),
+            Box::new(DataType::Int64),
+        )));
+    }
+
+    /// When ALL projected columns are uncacheable (string-only), the optimizer
+    /// should NOT rewrite ParquetSource to LiquidParquetSource.
+    #[tokio::test]
+    async fn test_skip_rewrite_all_string_projection() {
+        let ctx = SessionContext::new();
+        ctx.register_parquet(
+            "nano_hits",
+            "../../examples/nano_hits.parquet",
+            Default::default(),
+        )
+        .await
+        .unwrap();
+        // Select only string columns — URL and Title are Utf8
+        let df = ctx
+            .sql("SELECT \"URL\", \"Title\" FROM nano_hits LIMIT 10")
+            .await
+            .unwrap();
+        let plan = df.create_physical_plan().await.unwrap();
+
+        let liquid_cache = create_test_cache().await;
+        let rewritten = rewrite_data_source_plan(plan, &liquid_cache);
+
+        // The rewritten plan should still use ParquetSource, NOT LiquidParquetSource
+        let mut found_parquet_source = false;
+        rewritten
+            .apply(|node| {
+                if let Some(data_source_exec) = node.as_any().downcast_ref::<DataSourceExec>() {
+                    let data_source = data_source_exec.data_source();
+                    let any_source = data_source.as_any();
+                    let source = any_source.downcast_ref::<FileScanConfig>().unwrap();
+                    let file_source = source.file_source();
+                    // Should be ParquetSource, not LiquidParquetSource
+                    assert!(
+                        file_source.as_any().downcast_ref::<ParquetSource>().is_some(),
+                        "Expected ParquetSource for all-string projection, got LiquidParquetSource"
+                    );
+                    found_parquet_source = true;
+                }
+                Ok(TreeNodeRecursion::Continue)
+            })
+            .unwrap();
+        assert!(found_parquet_source, "Should have found a DataSourceExec node");
+    }
+
+    /// When at least one projected column is cacheable (numeric), the optimizer
+    /// SHOULD rewrite to LiquidParquetSource.
+    #[tokio::test]
+    async fn test_rewrite_applied_with_numeric_column() {
+        let ctx = SessionContext::new();
+        ctx.register_parquet(
+            "nano_hits",
+            "../../examples/nano_hits.parquet",
+            Default::default(),
+        )
+        .await
+        .unwrap();
+        // WatchID is Int64 (cacheable) + URL is Utf8 (uncacheable)
+        let df = ctx
+            .sql("SELECT \"WatchID\", \"URL\" FROM nano_hits LIMIT 10")
+            .await
+            .unwrap();
+        let plan = df.create_physical_plan().await.unwrap();
+
+        let liquid_cache = create_test_cache().await;
+        let rewritten = rewrite_data_source_plan(plan, &liquid_cache);
+
+        // Should have been rewritten to LiquidParquetSource
+        let mut found_liquid_source = false;
+        rewritten
+            .apply(|node| {
+                if let Some(data_source_exec) = node.as_any().downcast_ref::<DataSourceExec>() {
+                    let data_source = data_source_exec.data_source();
+                    let any_source = data_source.as_any();
+                    let source = any_source.downcast_ref::<FileScanConfig>().unwrap();
+                    let file_source = source.file_source();
+                    assert!(
+                        file_source.as_any().downcast_ref::<LiquidParquetSource>().is_some(),
+                        "Expected LiquidParquetSource for mixed projection"
+                    );
+                    found_liquid_source = true;
+                }
+                Ok(TreeNodeRecursion::Continue)
+            })
+            .unwrap();
+        assert!(found_liquid_source, "Should have found a DataSourceExec node");
     }
 }
