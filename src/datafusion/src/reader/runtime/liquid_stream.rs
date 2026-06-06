@@ -1,14 +1,16 @@
-use crate::cache::{CachedFileRef, CachedRowGroupRef};
+use crate::cache::{BatchID, CachedFileRef, CachedRowGroupRef, is_string_type};
 use crate::reader::plantime::{LiquidRowFilter, ParquetMetadataCacheReader};
 use arrow::array::RecordBatch;
-use arrow_schema::{Schema, SchemaRef};
+use arrow_schema::{ArrowError, Schema, SchemaRef};
 use fastrace::Event;
 use fastrace::local::LocalSpan;
 use futures::Stream;
+use futures::StreamExt;
 use parquet::{
     arrow::{
+        ParquetRecordBatchStreamBuilder,
         ProjectionMask,
-        arrow_reader::{ArrowPredicate, RowSelection, RowSelector},
+        arrow_reader::{ArrowPredicate, ArrowReaderMetadata, ArrowReaderOptions, RowSelection, RowSelector},
     },
     errors::ParquetError,
     file::metadata::ParquetMetaData,
@@ -120,6 +122,10 @@ impl ReaderFactory {
 
         let projection_column_ids = get_root_column_ids(schema_descr, &projection);
 
+        // Cold-cache detection: if no cacheable column has batch 0 cached,
+        // the row group is cold and can use the streamlined direct reader.
+        let is_cold = !cached_row_group.has_any_cached_batch();
+
         let context = PlanningContext {
             row_group_idx,
             selection,
@@ -128,6 +134,7 @@ impl ReaderFactory {
             cache_projection,
             projection_column_ids,
             cache_column_ids,
+            is_cold,
         };
 
         Some(context)
@@ -152,6 +159,9 @@ struct PlanningContext {
     cache_projection: ProjectionMask,
     projection_column_ids: Vec<usize>,
     cache_column_ids: Vec<usize>,
+    /// True when the row group has no cached data (cold). The stream
+    /// can use a streamlined direct-parquet reader path.
+    is_cold: bool,
 }
 
 fn build_liquid_cache_reader(
@@ -186,8 +196,10 @@ fn build_liquid_cache_reader(
 enum StreamState {
     /// At the start of a new row group, or the end of the parquet stream
     Init,
-    /// Decoding a batch from cache
+    /// Decoding a batch from cache (warm path)
     ReadFromCache(Box<LiquidCacheReader>),
+    /// Streaming directly from parquet (cold path) — bypasses per-batch cache state machine
+    ReadFromParquetDirect(Box<ColdCacheReader>),
 }
 
 impl std::fmt::Debug for StreamState {
@@ -195,8 +207,120 @@ impl std::fmt::Debug for StreamState {
         match self {
             StreamState::Init => write!(f, "StreamState::Init"),
             StreamState::ReadFromCache(_) => write!(f, "StreamState::Decoding"),
+            StreamState::ReadFromParquetDirect(_) => write!(f, "StreamState::ColdDirect"),
         }
     }
+}
+
+/// Streamlined reader for cold row groups. Reads directly from parquet using
+/// DataFusion's native `ParquetRecordBatchStream` and fills the cache in the
+/// background. Avoids the per-batch async state machine overhead of
+/// `LiquidCacheReader` when no cached data exists.
+struct ColdCacheReader {
+    stream: Pin<Box<dyn Stream<Item = Result<RecordBatch, ParquetError>> + Send>>,
+    cached_row_group: CachedRowGroupRef,
+    /// File column IDs of cacheable (numeric predicate) columns to fill in background
+    cacheable_file_column_ids: Vec<usize>,
+    /// All column IDs in the cache projection (maps parquet batch columns to file IDs)
+    cache_column_ids: Vec<usize>,
+    current_batch_id: BatchID,
+    /// Row filter returned to the ReaderFactory when this reader completes
+    row_filter: Option<LiquidRowFilter>,
+}
+
+impl ColdCacheReader {
+    fn into_filter(self) -> Option<LiquidRowFilter> {
+        self.row_filter
+    }
+
+    fn spawn_fill_batch(&self, batch: &RecordBatch) {
+        if self.cacheable_file_column_ids.is_empty() {
+            return;
+        }
+        let cached_row_group = self.cached_row_group.clone();
+        let cacheable_ids = self.cacheable_file_column_ids.clone();
+        let cache_column_ids = self.cache_column_ids.clone();
+        let batch_id = self.current_batch_id;
+        let batch_for_cache = batch.clone();
+        tokio::spawn(async move {
+            for file_column_id in cacheable_ids {
+                let Some(col_idx) = cache_column_ids
+                    .iter()
+                    .position(|&id| id == file_column_id)
+                else {
+                    continue;
+                };
+                let Some(column) = cached_row_group.get_column(file_column_id as u64) else {
+                    continue;
+                };
+                if col_idx < batch_for_cache.num_columns() {
+                    let array = Arc::clone(batch_for_cache.column(col_idx));
+                    let _ = column.insert(batch_id, array).await;
+                }
+            }
+        });
+    }
+}
+
+impl Stream for ColdCacheReader {
+    type Item = Result<RecordBatch, ParquetError>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match self.stream.as_mut().poll_next(cx) {
+            Poll::Ready(Some(Ok(batch))) => {
+                self.spawn_fill_batch(&batch);
+                self.current_batch_id.inc();
+                Poll::Ready(Some(Ok(batch)))
+            }
+            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+/// Build a cold-cache reader that streams directly from parquet.
+fn build_cold_reader(
+    reader_factory: &mut ReaderFactory,
+    context: PlanningContext,
+) -> Result<ColdCacheReader, ParquetError> {
+    let reader_metadata = ArrowReaderMetadata::try_new(
+        Arc::clone(&reader_factory.metadata),
+        ArrowReaderOptions::new(),
+    )?;
+
+    let stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+        reader_factory.input.clone(),
+        reader_metadata,
+    )
+    .with_projection(context.cache_projection.clone())
+    .with_row_groups(vec![context.row_group_idx])
+    .with_batch_size(context.cached_row_group.batch_size())
+    .with_row_selection(context.selection)
+    .build()?;
+
+    // Determine which columns are cacheable (numeric predicate)
+    let cacheable_file_column_ids: Vec<usize> = context
+        .cache_column_ids
+        .iter()
+        .filter(|&&col_id| {
+            context
+                .cached_row_group
+                .get_column(col_id as u64)
+                .map(|col| col.is_predicate_column() && !is_string_type(col.field().data_type()))
+                .unwrap_or(false)
+        })
+        .copied()
+        .collect();
+
+    Ok(ColdCacheReader {
+        stream: Box::pin(stream),
+        cached_row_group: context.cached_row_group,
+        cacheable_file_column_ids,
+        cache_column_ids: context.cache_column_ids,
+        current_batch_id: BatchID::from_raw(0),
+        row_filter: reader_factory.filter.take(),
+    })
 }
 
 pub struct LiquidStreamBuilder {
@@ -388,6 +512,28 @@ impl Stream for LiquidStream {
                         }
                     }
                 }
+                StreamState::ReadFromParquetDirect(mut cold_reader) => {
+                    match Pin::new(&mut *cold_reader).poll_next(cx) {
+                        Poll::Ready(Some(Ok(batch))) => {
+                            self.state = StreamState::ReadFromParquetDirect(cold_reader);
+                            return Poll::Ready(Some(Ok(batch)));
+                        }
+                        Poll::Ready(Some(Err(e))) => {
+                            self.state = StreamState::ReadFromParquetDirect(cold_reader);
+                            return Poll::Ready(Some(Err(e)));
+                        }
+                        Poll::Ready(None) => {
+                            let cold_reader = *cold_reader;
+                            let filter = cold_reader.into_filter();
+                            self.reader.as_mut().unwrap().filter = filter;
+                            // state left as Init, continue loop to plan next row group
+                        }
+                        Poll::Pending => {
+                            self.state = StreamState::ReadFromParquetDirect(cold_reader);
+                            return Poll::Pending;
+                        }
+                    }
+                }
                 StreamState::Init => {
                     let row_group_idx = match self.row_groups.pop_front() {
                         Some(idx) => idx,
@@ -408,7 +554,23 @@ impl Stream for LiquidStream {
                         batch_size,
                     );
                     match maybe_context {
+                        Some(context) if context.is_cold => {
+                            // Cold path: stream directly from parquet, fill cache in background
+                            LocalSpan::add_event(Event::new("LiquidStream::cold_direct_read"));
+                            let reader_factory = self.reader.as_mut().unwrap();
+                            match build_cold_reader(reader_factory, context) {
+                                Ok(cold_reader) => {
+                                    self.state = StreamState::ReadFromParquetDirect(
+                                        Box::new(cold_reader),
+                                    );
+                                }
+                                Err(e) => {
+                                    return Poll::Ready(Some(Err(e)));
+                                }
+                            }
+                        }
                         Some(context) => {
+                            // Warm path: use existing LiquidCacheReader
                             LocalSpan::add_event(Event::new("LiquidStream::read_from_cache"));
                             let schema = Arc::clone(&self.schema);
                             let reader_factory = self.reader.as_mut().unwrap();

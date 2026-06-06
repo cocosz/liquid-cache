@@ -80,6 +80,18 @@ impl CachedRowGroup {
         self.columns.by_id.get(&column_id).cloned()
     }
 
+    /// Returns true if at least one batch has been cached in any cacheable
+    /// (numeric predicate) column. Used for cold-cache detection: if batch 0
+    /// isn't cached in any cacheable column, the row group is cold and can
+    /// use the streamlined direct-parquet reader path.
+    pub fn has_any_cached_batch(&self) -> bool {
+        self.columns.by_id.values().any(|col| {
+            col.is_predicate_column()
+                && !is_string_type(col.field().data_type())
+                && col.is_cached(BatchID::from_raw(0))
+        })
+    }
+
     /// Get a column from the row group by its field name.
     pub fn get_column_by_name(&self, column_name: &str) -> Option<CachedColumnRef> {
         if let Some(column) = self.columns.by_name.get(column_name) {
