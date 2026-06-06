@@ -22,6 +22,7 @@ mod id;
 mod stats;
 
 pub(crate) use column::InsertArrowArrayError;
+pub(crate) use column::is_string_type;
 pub use column::{CachedColumn, CachedColumnRef};
 pub(crate) use id::ColumnAccessPath;
 pub use id::{BatchID, ParquetArrayID};

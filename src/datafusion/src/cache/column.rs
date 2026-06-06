@@ -230,7 +230,7 @@ impl CachedColumn {
     }
 }
 
-fn is_string_type(data_type: &DataType) -> bool {
+pub(crate) fn is_string_type(data_type: &DataType) -> bool {
     match data_type {
         DataType::Utf8 | DataType::Utf8View | DataType::LargeUtf8 => true,
         DataType::Binary | DataType::BinaryView | DataType::LargeBinary => true,

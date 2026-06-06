@@ -16,7 +16,7 @@ use parquet::arrow::{ParquetRecordBatchStreamBuilder, ProjectionMask};
 use parquet::errors::ParquetError;
 use parquet::file::metadata::ParquetMetaData;
 
-use crate::cache::{BatchID, CachedRowGroupRef, InsertArrowArrayError};
+use crate::cache::{BatchID, CachedRowGroupRef, is_string_type};
 use crate::reader::plantime::{LiquidRowFilter, ParquetMetadataCacheReader};
 use crate::reader::runtime::utils::take_next_batch;
 use crate::utils::{boolean_buffer_and_then, row_selector_to_boolean_buffer};
@@ -53,6 +53,12 @@ struct LiquidCacheReaderInner {
     schema: SchemaRef,
     batch_size: usize,
     projection_columns: Vec<usize>,
+    /// Indices into `projection_columns` for columns that are cacheable
+    /// (numeric predicate columns). These get cache lookups.
+    cacheable_columns: Vec<usize>,
+    /// Indices into `projection_columns` for columns that are never cached
+    /// (strings, binary, non-predicate). These bypass cache lookups entirely.
+    bypass_columns: Vec<usize>,
     parquet_fallback: ParquetFallback,
     last_pull: Option<(BatchID, RecordBatch)>,
 }
@@ -249,6 +255,22 @@ impl LiquidCacheReaderInner {
         schema: SchemaRef,
         parquet_fallback: ParquetFallback,
     ) -> Self {
+        // Classify columns: cacheable (numeric predicate) vs bypass (string/non-predicate).
+        // Bypass columns skip cache lookups entirely since they'd always return None.
+        let mut cacheable_columns = Vec::new();
+        let mut bypass_columns = Vec::new();
+        for (proj_idx, &col_id) in projection_columns.iter().enumerate() {
+            let is_cacheable = cached_row_group
+                .get_column(col_id as u64)
+                .map(|col| col.is_predicate_column() && !is_string_type(col.field().data_type()))
+                .unwrap_or(false);
+            if is_cacheable {
+                cacheable_columns.push(proj_idx);
+            } else {
+                bypass_columns.push(proj_idx);
+            }
+        }
+
         Self {
             cached_row_group,
             current_batch_id: BatchID::from_raw(0),
@@ -256,6 +278,8 @@ impl LiquidCacheReaderInner {
             schema,
             batch_size,
             projection_columns,
+            cacheable_columns,
+            bypass_columns,
             parquet_fallback,
             last_pull: None,
         }
@@ -356,8 +380,12 @@ impl LiquidCacheReaderInner {
             return Ok(Some(batch));
         }
 
-        let mut arrays = Vec::with_capacity(self.projection_columns.len());
-        for column_idx in self.projection_columns.clone() {
+        let mut arrays: Vec<Option<ArrayRef>> = vec![None; self.projection_columns.len()];
+
+        // Phase 1: Try cache for cacheable columns only (skip bypass columns)
+        let mut need_fallback = !self.bypass_columns.is_empty();
+        for &proj_idx in &self.cacheable_columns {
+            let column_idx = self.projection_columns[proj_idx];
             let column = self
                 .cached_row_group
                 .get_column(column_idx as u64)
@@ -371,20 +399,40 @@ impl LiquidCacheReaderInner {
                 .get_arrow_array_with_filter(self.current_batch_id, selection)
                 .await;
 
-            let array = match array {
-                Some(array) => array,
-                None => {
-                    let record_batch = self
-                        .read_parquet_batch_and_fill_cache(self.current_batch_id)
-                        .await?;
-                    let array = self.parquet_array(&record_batch, column_idx)?;
-                    filter_array(array, selection)?
+            match array {
+                Some(arr) => {
+                    arrays[proj_idx] = Some(arr);
                 }
-            };
-
-            arrays.push(array);
+                None => {
+                    need_fallback = true;
+                }
+            }
         }
 
+        // Phase 2: Fallback for bypass columns and cache-missed cacheable columns
+        if need_fallback {
+            let record_batch = self
+                .read_parquet_batch_and_fill_cache(self.current_batch_id)
+                .await?;
+
+            // Fill bypass columns from fallback batch
+            for &proj_idx in &self.bypass_columns {
+                let column_idx = self.projection_columns[proj_idx];
+                let array = self.parquet_array(&record_batch, column_idx)?;
+                arrays[proj_idx] = Some(filter_array(array, selection)?);
+            }
+
+            // Fill cache-missed cacheable columns from fallback batch
+            for &proj_idx in &self.cacheable_columns {
+                if arrays[proj_idx].is_none() {
+                    let column_idx = self.projection_columns[proj_idx];
+                    let array = self.parquet_array(&record_batch, column_idx)?;
+                    arrays[proj_idx] = Some(filter_array(array, selection)?);
+                }
+            }
+        }
+
+        let arrays: Vec<ArrayRef> = arrays.into_iter().map(|a| a.unwrap()).collect();
         Ok(Some(
             RecordBatch::try_new(self.schema.clone(), arrays).unwrap(),
         ))
@@ -406,21 +454,34 @@ impl LiquidCacheReaderInner {
             .await
             .map_err(|e| ArrowError::ComputeError(format!("parquet fallback read failed: {e}")))?;
 
-        // Spawn cache fill asynchronously — transcoding Arrow→Liquid should not
-        // block the query hot path. The batch is returned immediately; cache
-        // population happens in the background.
-        let cached_row_group = self.cached_row_group.clone();
-        let cache_column_ids = self.parquet_fallback.cache_column_ids.clone();
-        let batch_for_cache = record_batch.clone();
-        tokio::spawn(async move {
-            for (col_idx, file_column_id) in cache_column_ids.iter().copied().enumerate() {
-                let Some(column) = cached_row_group.get_column(file_column_id as u64) else {
-                    continue;
-                };
-                let array = Arc::clone(batch_for_cache.column(col_idx));
-                let _ = column.insert(batch_id, array).await;
-            }
-        });
+        // Spawn cache fill asynchronously — only for cacheable columns.
+        // String/binary and non-predicate columns are never stored in the cache,
+        // so spawning for them wastes CPU (insert immediately returns CacheFull).
+        if !self.cacheable_columns.is_empty() {
+            let cached_row_group = self.cached_row_group.clone();
+            let cache_column_ids = self.parquet_fallback.cache_column_ids.clone();
+            let cacheable_file_ids: Vec<usize> = self
+                .cacheable_columns
+                .iter()
+                .map(|&proj_idx| self.projection_columns[proj_idx])
+                .collect();
+            let batch_for_cache = record_batch.clone();
+            tokio::spawn(async move {
+                for file_column_id in cacheable_file_ids {
+                    let Some(col_idx) = cache_column_ids
+                        .iter()
+                        .position(|&id| id == file_column_id)
+                    else {
+                        continue;
+                    };
+                    let Some(column) = cached_row_group.get_column(file_column_id as u64) else {
+                        continue;
+                    };
+                    let array = Arc::clone(batch_for_cache.column(col_idx));
+                    let _ = column.insert(batch_id, array).await;
+                }
+            });
+        }
 
         self.last_pull = Some((batch_id, record_batch.clone()));
         Ok(record_batch)
