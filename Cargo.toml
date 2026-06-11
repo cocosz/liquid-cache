@@ -52,7 +52,7 @@ datafusion-proto = { version = "54.0.0" }
 async-trait = "0.1.89"
 futures = { version = "0.3.32", default-features = false, features = ["std"] }
 tokio = { version = "1.52.3", features = ["rt-multi-thread"] }
-log = "0.4.32"
+log = "0.4.29"
 tonic = { version = "0.14.6" }
 url = "2.5.8"
 bytes = { version = "1.11.1", default-features = false }
