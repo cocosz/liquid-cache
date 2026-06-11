@@ -57,7 +57,7 @@ tonic = { version = "0.14.6" }
 url = "2.5.8"
 bytes = { version = "1.11.1", default-features = false }
 ahash = "0.8.12"
-prost = "0.14.4"
+prost = "0.14.3"
 object_store = { version = "0.13.2", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
