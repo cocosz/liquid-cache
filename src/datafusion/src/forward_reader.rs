@@ -191,7 +191,9 @@ impl LiquidForwardBatchReader {
     }
 
     /// Serves `[target_row, target_row + max_rows)` clamped to the page end
-    /// from a cached whole-page entry, as a zero-copy slice.
+    /// from a cached whole-page entry. Only the requested rows are
+    /// materialized: liquid-transcoded entries decode just the selected
+    /// window, so sparse hits never pay for the full page.
     fn read_cached_page(
         &self,
         page: &ParquetForwardPage,
@@ -200,22 +202,24 @@ impl LiquidForwardBatchReader {
     ) -> ParquetResult<Option<RecordBatch>> {
         let column = &self.columns[page.row_group_index];
         let page_id = PageID::from_page_index(page.page_index);
-        let Some(array) = self.runtime.block_on(column.get_page(page_id)) else {
+        let offset = target_row - page.first_row;
+        let rows = max_rows.min(page.row_count - offset);
+        let Some(array) = self
+            .runtime
+            .block_on(column.get_page_rows(page_id, offset, rows, page.row_count))
+        else {
             return Ok(None);
         };
-        if array.len() != page.row_count {
+        if array.len() != rows {
             log::warn!(
-                "Liquid page-grid entry rg={} page={} holds {} rows, expected {}; ignoring",
+                "Liquid page-grid entry rg={} page={} returned {} rows for a {}-row window; ignoring",
                 page.row_group_index,
                 page.page_index,
                 array.len(),
-                page.row_count
+                rows
             );
             return Ok(None);
         }
-        let offset = target_row - page.first_row;
-        let rows = max_rows.min(page.row_count - offset);
-        let array: ArrayRef = array.slice(offset, rows);
         let schema = Arc::new(Schema::new(vec![Arc::clone(&self.field)]));
         Ok(Some(RecordBatch::try_new(schema, vec![array])?))
     }
@@ -487,6 +491,39 @@ mod tests {
             .block_on(column.get_page(PageID::from_page_index(0)))
             .unwrap();
         assert_eq!(page.len(), PAGE_ROWS);
+    }
+
+    #[test]
+    fn window_read_materializes_only_requested_rows() {
+        let (runtime, schema, _factory) = test_input();
+        let cache = test_cache(&runtime);
+        let file = cache.register_or_get_file("data.parquet".to_string(), Arc::clone(&schema));
+        let column = file.create_column(0, 0, true).unwrap();
+        runtime
+            .block_on(column.insert_page(
+                PageID::from_page_index(0),
+                Arc::new(Int32Array::from_iter_values(0..PAGE_ROWS as i32)),
+            ))
+            .unwrap();
+
+        // Interior window: exactly the requested rows come back.
+        let window = runtime
+            .block_on(column.get_page_rows(PageID::from_page_index(0), 1, 2, PAGE_ROWS))
+            .unwrap();
+        assert_eq!(
+            window
+                .as_any()
+                .downcast_ref::<Int32Array>()
+                .unwrap()
+                .values(),
+            &[1, 2]
+        );
+
+        // Whole-page window uses the selection-free (zero-copy) path.
+        let whole = runtime
+            .block_on(column.get_page_rows(PageID::from_page_index(0), 0, PAGE_ROWS, PAGE_ROWS))
+            .unwrap();
+        assert_eq!(whole.len(), PAGE_ROWS);
     }
 
     #[test]
