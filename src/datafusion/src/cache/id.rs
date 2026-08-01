@@ -136,6 +136,48 @@ impl Deref for BatchID {
     }
 }
 
+/// One Parquet data page within a column chunk, identified by its 0-based
+/// OffsetIndex ordinal.
+///
+/// Page-grid entries are whole column pages — never a smaller unit. The page
+/// id occupies the same `ParquetArrayID` slot as [`BatchID`], offset into a
+/// reserved namespace (see [`PageID::NAMESPACE_BASE`]) so page-keyed and
+/// batch-keyed entries can share one cache instance without colliding. When
+/// the scan path adopts the page grid, both paths key entries identically and
+/// naturally reuse each other's pages.
+#[repr(C, align(2))]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct PageID {
+    v: u16,
+}
+
+impl PageID {
+    /// Reserved high bit separating page-grid entries from batch-grid entries
+    /// within one column chunk's key space. Both grids stay well below this
+    /// bound: batch ids are `row / batch_size` (row groups hold ≪ 2^15 batches)
+    /// and column chunks hold ≪ 2^15 pages.
+    pub const NAMESPACE_BASE: u16 = 1 << 15;
+
+    /// Creates a PageID from a 0-based page ordinal within the column chunk.
+    pub fn from_page_index(page_index: usize) -> Self {
+        debug_assert!(page_index < Self::NAMESPACE_BASE as usize);
+        Self {
+            v: page_index as u16,
+        }
+    }
+
+    /// The 0-based page ordinal.
+    pub fn page_index(&self) -> usize {
+        self.v as usize
+    }
+
+    /// The namespaced slot value used inside `ParquetArrayID`.
+    pub(crate) fn slot(&self) -> BatchID {
+        BatchID::from_raw(Self::NAMESPACE_BASE | self.v)
+    }
+}
+
+
 /// Column access path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ColumnAccessPath {

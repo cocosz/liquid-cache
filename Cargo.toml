@@ -71,3 +71,33 @@ t4 = "0.1.7"
 
 [profile.dev.package]
 insta.opt-level = 3
+
+# Forked arrow-rs / datafusion carrying the doc-values forward-cursor APIs
+# (ParquetForwardBatchReader/Factory, ParquetRecordBatchReader::skip_rows).
+# Same pins as the OpenSearch dataformat-native workspace; branch
+# docvalues-forward-cursor in both forks.
+[patch.crates-io]
+arrow = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-arith = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-array = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-buffer = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-cast = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-csv = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-data = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-flight = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-ipc = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-json = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-ord = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-row = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-schema = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-select = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+arrow-string = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+parquet = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+parquet-variant-json = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+parquet-variant-compute = { git = "https://github.com/bharath-techie/arrow-rs.git", rev = "38b2f7a6a7f58d0dde9f932be1497444f7646a4c" }
+datafusion = { git = "https://github.com/bharath-techie/datafusion.git", rev = "376902b53a502b19cd0cf5e4e72e4f705ce5d5cd" }
+datafusion-common = { git = "https://github.com/bharath-techie/datafusion.git", rev = "376902b53a502b19cd0cf5e4e72e4f705ce5d5cd" }
+datafusion-expr-common = { git = "https://github.com/bharath-techie/datafusion.git", rev = "376902b53a502b19cd0cf5e4e72e4f705ce5d5cd" }
+datafusion-physical-expr = { git = "https://github.com/bharath-techie/datafusion.git", rev = "376902b53a502b19cd0cf5e4e72e4f705ce5d5cd" }
+datafusion-physical-expr-common = { git = "https://github.com/bharath-techie/datafusion.git", rev = "376902b53a502b19cd0cf5e4e72e4f705ce5d5cd" }
+datafusion-proto = { git = "https://github.com/bharath-techie/datafusion.git", rev = "376902b53a502b19cd0cf5e4e72e4f705ce5d5cd" }

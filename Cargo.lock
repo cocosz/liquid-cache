@@ -168,8 +168,7 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 [[package]]
 name = "arrow"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "378530e55cd479eda3c14eb345310799717e6f76d0c332041e8487022166b471"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-arith",
  "arrow-array",
@@ -189,8 +188,7 @@ dependencies = [
 [[package]]
 name = "arrow-arith"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0ab212d2c1886e802f51c5212d78ebbcbb0bec980fff9dadc1eb8d45cd0b738"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -203,8 +201,7 @@ dependencies = [
 [[package]]
 name = "arrow-array"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfd33d3e92f207444098c75b42de99d329562be0cf686b307b097cc52b4e999e"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "ahash",
  "arrow-buffer",
@@ -222,8 +219,7 @@ dependencies = [
 [[package]]
 name = "arrow-buffer"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c6cd424c2693bcdbc150d843dc9d4d137dd2de4782ce6df491ad11a3a0416c0"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "bytes",
  "half",
@@ -234,8 +230,7 @@ dependencies = [
 [[package]]
 name = "arrow-cast"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c5aefb56a2c02e9e2b30746241058b85f8983f0fcff2ba0c6d09006e1cded7f"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -256,8 +251,7 @@ dependencies = [
 [[package]]
 name = "arrow-csv"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e94e8cf7e517657a52b91ea1263acf38c4ca62a84655d72458a3359b12ab97de"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-array",
  "arrow-cast",
@@ -271,8 +265,7 @@ dependencies = [
 [[package]]
 name = "arrow-data"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c88210023a2bfee1896af366309a3028fc3bcbd6515fa29a7990ee1baa08ee0"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-buffer",
  "arrow-schema",
@@ -284,8 +277,7 @@ dependencies = [
 [[package]]
 name = "arrow-flight"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28abfe8bf9f124e5fc83b334af4fa58f8d0323ad25312ccb2d1da50178415704"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-arith",
  "arrow-array",
@@ -312,8 +304,7 @@ dependencies = [
 [[package]]
 name = "arrow-ipc"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "238438f0834483703d88896db6fe5a7138b2230debc31b34c0336c2996e3c64f"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -328,8 +319,7 @@ dependencies = [
 [[package]]
 name = "arrow-json"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "205ca2119e6d679d5c133c6f30e68f027738d95ed948cf77677ea69c7800036b"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -353,8 +343,7 @@ dependencies = [
 [[package]]
 name = "arrow-ord"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bffd8fd2579286a5d63bac898159873e5094a79009940bcb42bbfce4f19f1d0"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -366,8 +355,7 @@ dependencies = [
 [[package]]
 name = "arrow-row"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bab5994731204603c73ba69267616c50f80780774c6bb0476f1f830625115e0c"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -379,8 +367,7 @@ dependencies = [
 [[package]]
 name = "arrow-schema"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f633dbfdf39c039ada1bf9e34c694816eb71fbb7dc78f613993b7245e078a1ed"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "serde",
  "serde_core",
@@ -390,8 +377,7 @@ dependencies = [
 [[package]]
 name = "arrow-select"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cd065c54172ac787cf3f2f8d4107e0d3fdc26edba76fdf4f4cc170258942222"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -404,8 +390,7 @@ dependencies = [
 [[package]]
 name = "arrow-string"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29dd7cda3ab9692f43a2e4acc444d760cc17b12bb6d8232ddf64e9bab7c06b42"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -1384,8 +1369,7 @@ checksum = "a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8"
 [[package]]
 name = "datafusion"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "997a31e15872606a49478e670c58302094c97cb96abb0a7d60720f8e92170040"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "arrow-schema",
@@ -1437,8 +1421,7 @@ dependencies = [
 [[package]]
 name = "datafusion-catalog"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7dd61161508f8f5fa1107774ea687bd753c22d83a32eebf963549f89de14139"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1462,8 +1445,7 @@ dependencies = [
 [[package]]
 name = "datafusion-catalog-listing"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "897c70f871277f9ce99aa38347be0d679bbe3e617156c4d2a8378cec8a2a0891"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1485,8 +1467,7 @@ dependencies = [
 [[package]]
 name = "datafusion-common"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "121c9ded5d87d9172319e006f2afdb9928d72dbacd6a90a458d8acb1e3b43a65"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "arrow-ipc",
@@ -1511,8 +1492,7 @@ dependencies = [
 [[package]]
 name = "datafusion-common-runtime"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "981b9dae74f78ee3d9f714fb49b01919eab975461b56149510c3ba9ea11287d1"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "futures",
  "log",
@@ -1522,8 +1502,7 @@ dependencies = [
 [[package]]
 name = "datafusion-datasource"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffd7d295b2ec7c00d8a56562f41ed41062cf0af75549ed891c12a0a09eddfefe"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "async-compression",
@@ -1558,8 +1537,7 @@ dependencies = [
 [[package]]
 name = "datafusion-datasource-arrow"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "552b0b3f342f7ec41b3fbd70f6339dc82a30cfd0349e7f280e7852528085349f"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "arrow-ipc",
@@ -1582,8 +1560,7 @@ dependencies = [
 [[package]]
 name = "datafusion-datasource-csv"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68850aa426b897e879c8b87e512ea8124f1d0a2869a4e51808ddaaddf1bc0ada"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1605,8 +1582,7 @@ dependencies = [
 [[package]]
 name = "datafusion-datasource-json"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "402f93242ae08ef99139ee2c528a49d087efe88d5c7b2c3ff5480855a40ce54f"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1628,8 +1604,7 @@ dependencies = [
 [[package]]
 name = "datafusion-datasource-parquet"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffd2499c1bee0eeccf6a57156105700eeeb17bc701899ac719183c4e74231450"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1659,14 +1634,12 @@ dependencies = [
 [[package]]
 name = "datafusion-doc"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb9e7e5d11130c48c8bd4e80c79a9772dd28ce6dc330baca9246205d245b9e2e"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 
 [[package]]
 name = "datafusion-execution"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37a8643ab852eb68864e1b72ae789e8066282dce48eea6347ffb0aee33d1ccc0"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "arrow-buffer",
@@ -1687,8 +1660,7 @@ dependencies = [
 [[package]]
 name = "datafusion-expr"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6932f4d71eed9c8d9341476a2b845aadfabde5495d08dbcd8fc23881f49fa7a0"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "arrow-schema",
@@ -1710,8 +1682,7 @@ dependencies = [
 [[package]]
 name = "datafusion-expr-common"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0225491839a31b1f7d2cb8092c2d50792e2fe1c1724e4e6d08e011f5feaf4ed2"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -1722,8 +1693,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14872c47bfc3d21e53ec82f57074e6987a15941c1e2f43cde4ac6ae2746634e3"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "arrow-buffer",
@@ -1754,8 +1724,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-aggregate"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75a2ca14e1b609be21e657e2d3130b2f446456b08393b377bb721a33952d2e09"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -1775,8 +1744,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-aggregate-common"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ece74ba09092d2ef9c9b54a38445450aea292a1f8b04faf531936b723a24b3c"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -1787,8 +1755,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-nested"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f3e3f9ee8ca59bf70518802107de6f1b88a9509efdc629fadc5de9d6b2d5ef5"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "arrow-ord",
@@ -1812,8 +1779,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-table"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89161dffc22cf2b50f9f4b1bee83b5221d3b4ed7c2e37fd7aa2b22a5297b3a26"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "async-trait",
@@ -1828,8 +1794,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-window"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7339345b226b3874037708bf5023ba1c2de705128f8457a095aae5ae9cb9c78"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -1845,8 +1810,7 @@ dependencies = [
 [[package]]
 name = "datafusion-functions-window-common"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa84836dc2392df6f43d6a29d37fb56a8ebdc8b3f4e10ae8dc15861fd20278fb"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "datafusion-common",
  "datafusion-physical-expr-common",
@@ -1855,8 +1819,7 @@ dependencies = [
 [[package]]
 name = "datafusion-macros"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "587164e03ad68732aa9e7bfe5686e3f25970d4c64fd4bd80790749840892dae5"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "datafusion-doc",
  "quote",
@@ -1866,8 +1829,7 @@ dependencies = [
 [[package]]
 name = "datafusion-optimizer"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77f20e8cf9e8654d92f4c16b24c487353ee5bf153ffc12d5772cd399ab8cd281"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "chrono",
@@ -1886,8 +1848,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f015a4a82f6f7ff7e1d8d4bf3870a936752fa38b17705dfcc14adef95aa8922c"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -1908,8 +1869,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr-adapter"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51e6ffff8acdfe54e0ea15ccf38115c4a9184433b0439f42907637928d00a235"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -1923,8 +1883,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-expr-common"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7967a3e171c6a4bf09474b3f7a14f1a3db13ed1714ba12156f33fcce2bba54e8"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "chrono",
@@ -1940,8 +1899,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-optimizer"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59ff803e2a96054cb6d83f35f9e60fd4f42eac515e1932bd1b2dbc91d5fcbf36"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -1959,8 +1917,7 @@ dependencies = [
 [[package]]
 name = "datafusion-physical-plan"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "776ee54d47d15bdb126452f9ca17b03761e3b004682914beaedd3f86eb507fbc"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "arrow-data",
@@ -1992,8 +1949,7 @@ dependencies = [
 [[package]]
 name = "datafusion-proto"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9dd15a1ba5d3af93808241065c6c44dbca8296a189845e8a587c45c07bf0ffae"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "chrono",
@@ -2019,8 +1975,7 @@ dependencies = [
 [[package]]
 name = "datafusion-proto-common"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90042982cf9462eb06a0b81f92efa4188dae871e7ea3ab8dc61aa9c9349b2530"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -2030,8 +1985,7 @@ dependencies = [
 [[package]]
 name = "datafusion-pruning"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5fb9e5774660aa69c3ba93c610f175f75b65cb8c3776edb3626de8f3a4f4ee3"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -2046,8 +2000,7 @@ dependencies = [
 [[package]]
 name = "datafusion-session"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15ce715fa2a61f4623cc234bcc14a3ef6a91f189128d5b14b468a6a17cdfc417"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "async-trait",
  "datafusion-common",
@@ -2060,8 +2013,7 @@ dependencies = [
 [[package]]
 name = "datafusion-sql"
 version = "54.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6094ad36a3ed6d7ac87b20b479b2d0b118250f66cf997603829fdc65b44a7099"
+source = "git+https://github.com/bharath-techie/datafusion.git?rev=376902b53a502b19cd0cf5e4e72e4f705ce5d5cd#376902b53a502b19cd0cf5e4e72e4f705ce5d5cd"
 dependencies = [
  "arrow",
  "bigdecimal",
@@ -5028,8 +4980,7 @@ dependencies = [
 [[package]]
 name = "parquet"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dafa7d01085b62a47dd0c1829550a0a36710ea9c4fe358a05a85477cec8a908"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -5067,8 +5018,7 @@ dependencies = [
 [[package]]
 name = "parquet-variant"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74c8db065291f088a2aad8ab831853eae1871c0d311c8d0b83bbc3b7e735d0fc"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow",
  "arrow-schema",
@@ -5083,8 +5033,7 @@ dependencies = [
 [[package]]
 name = "parquet-variant-compute"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a530e8d5b5e14efcb39c9a6ec55432ad11f6afb7dc4455a79be0dc615fe3cc31"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow",
  "arrow-schema",
@@ -5100,8 +5049,7 @@ dependencies = [
 [[package]]
 name = "parquet-variant-json"
 version = "58.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00ed89908289f67caa2ca078f9ff9aacd6229a313ec92b12bf4f48f613dc2b97"
+source = "git+https://github.com/bharath-techie/arrow-rs.git?rev=38b2f7a6a7f58d0dde9f932be1497444f7646a4c#38b2f7a6a7f58d0dde9f932be1497444f7646a4c"
 dependencies = [
  "arrow-schema",
  "base64 0.22.1",

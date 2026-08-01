@@ -1,15 +1,15 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, BooleanBufferBuilder, RecordBatch};
+use arrow::array::{ArrayRef, RecordBatch};
 use arrow_schema::{DataType, Schema, SchemaRef};
 use datafusion::datasource::physical_plan::parquet::{
-    ParquetForwardBatchReader, ParquetForwardBatchReaderFactory,
+    ParquetForwardBatchReader, ParquetForwardBatchReaderFactory, ParquetForwardPage,
 };
 use parquet::errors::{ParquetError, Result as ParquetResult};
 use tokio::runtime::Runtime;
 
-use crate::cache::{BatchID, CachedColumnRef, LiquidCacheParquetRef};
+use crate::cache::{CachedColumnRef, LiquidCacheParquetRef, PageID};
 
 /// Liquid Cache configuration for a forward-only Parquet reader.
 pub struct LiquidForwardReaderConfig {
@@ -25,28 +25,38 @@ pub struct LiquidForwardReaderConfig {
     pub runtime: Arc<Runtime>,
 }
 
-struct CacheRowGroup {
-    start: usize,
-    row_count: usize,
-    column: CachedColumnRef,
-}
-
-impl CacheRowGroup {
-    fn end(&self) -> usize {
-        self.start + self.row_count
-    }
-}
-
-/// A forward-only reader that probes Liquid Cache before delegating misses to
-/// one retained DataFusion/Arrow Parquet reader.
+/// A forward-only reader that probes Liquid Cache's page grid before
+/// delegating misses to one retained DataFusion/Arrow Parquet reader.
+///
+/// The cache unit is the whole Parquet column page (see [`PageID`]) — the page
+/// grid's granularity floor. A hit serves a zero-copy slice of the cached page
+/// aligned to the same page-clamped window the Parquet path would return. A
+/// miss decodes through the retained reader untouched; when the caller's
+/// window is dense relative to the page, the whole page is decoded and
+/// inserted in the background, deduplicated across readers.
 pub struct LiquidForwardBatchReader {
     parquet: ParquetForwardBatchReader,
     factory: Arc<ParquetForwardBatchReaderFactory>,
     cache: Option<LiquidCacheParquetRef>,
-    cache_row_groups: Vec<CacheRowGroup>,
-    cache_batch_size: usize,
+    /// Per-row-group cached column handles; empty when the column is not cacheable.
+    columns: Vec<CachedColumnRef>,
+    /// Projected pages in row order (copied from the retained reader's OffsetIndex view).
+    pages: Vec<ParquetForwardPage>,
+    field: Arc<arrow_schema::Field>,
     runtime: Arc<Runtime>,
     position: usize,
+}
+
+/// A miss window at least this dense relative to its page promotes the whole
+/// page into the cache. Doc-values callers grow their window on dense access
+/// and shrink it on sparse access, so the window size is the density signal:
+/// sparse probing never pollutes the cache, sustained scans promote quickly.
+const PAGE_ADMISSION_FRACTION: usize = 8;
+
+/// Whether a miss with `window` rows over a `page_rows`-row page is dense
+/// enough to promote the whole page.
+fn admits_page(window: usize, page_rows: usize) -> bool {
+    window >= (page_rows / PAGE_ADMISSION_FRACTION).max(1)
 }
 
 impl LiquidForwardBatchReader {
@@ -57,9 +67,6 @@ impl LiquidForwardBatchReader {
         config: LiquidForwardReaderConfig,
     ) -> ParquetResult<Self> {
         let parquet = factory.open()?;
-        let mut cache_row_groups = Vec::new();
-        let cache = config.cache;
-        let cache_batch_size = cache.as_ref().map_or(1, |cache| cache.batch_size());
 
         let field = config
             .file_schema
@@ -73,67 +80,70 @@ impl LiquidForwardBatchReader {
                     config.file_schema.fields().len()
                 ))
             })?;
-        let cacheable =
-            cache.is_some() && !parquet.is_repeated() && is_cacheable_type(field.data_type());
+        let cacheable = config.cache.is_some()
+            && !parquet.is_repeated()
+            && is_cacheable_type(field.data_type());
 
-        if cacheable {
-            let cache = cache.as_ref().expect("cache checked above");
+        let (cache, columns, pages) = if cacheable {
+            let cache = config.cache.expect("cache checked above");
             let file = cache.register_or_get_file(config.file_path, config.file_schema);
-            let mut start = 0usize;
-            for (index, row_group) in parquet.metadata().row_groups().iter().enumerate() {
-                let row_count = usize::try_from(row_group.num_rows()).map_err(|_| {
-                    ParquetError::General(format!("negative row count for row group {index}"))
-                })?;
-                let column = file
-                    .create_column(index as u64, config.root_column_id as u64, true)
-                    .ok_or_else(|| {
-                        ParquetError::General(format!(
-                            "column {} is outside the Liquid Cache file schema",
-                            config.root_column_id
-                        ))
-                    })?;
-                cache_row_groups.push(CacheRowGroup {
-                    start,
-                    row_count,
-                    column,
-                });
-                start += row_count;
-            }
-        }
+            let row_groups = parquet.metadata().num_row_groups();
+            let columns = (0..row_groups)
+                .map(|row_group| {
+                    file.create_column(row_group as u64, config.root_column_id as u64, true)
+                        .ok_or_else(|| {
+                            ParquetError::General(format!(
+                                "column {} is outside the Liquid Cache file schema",
+                                config.root_column_id
+                            ))
+                        })
+                })
+                .collect::<ParquetResult<Vec<_>>>()?;
+            let pages = parquet.pages().to_vec();
+            (Some(cache), columns, pages)
+        } else {
+            (None, Vec::new(), Vec::new())
+        };
 
         Ok(Self {
             parquet,
             factory,
             cache,
-            cache_row_groups,
-            cache_batch_size,
+            columns,
+            pages,
+            field,
             runtime: config.runtime,
             position: 0,
         })
     }
 
-    /// Returns a cached slice when present; otherwise decodes through the
-    /// retained Parquet reader. Dense misses trigger deduplicated background
-    /// backfill of the containing aligned Liquid Cache batch.
+    /// Returns a page-grid slice when the containing page is cached; otherwise
+    /// decodes through the retained Parquet reader. Dense misses trigger
+    /// deduplicated background backfill of the whole containing page.
     pub fn read_batch_at(
         &mut self,
         target_row: usize,
         max_rows: usize,
     ) -> ParquetResult<Option<RecordBatch>> {
         self.validate_read(target_row, max_rows)?;
-        if target_row == self.row_count() {
+        if target_row == self.parquet.row_count() {
             return Ok(None);
         }
 
-        if let Some(batch) = self.read_cached(target_row, max_rows)? {
-            self.position = target_row + batch.num_rows();
-            return Ok(Some(batch));
+        let page = self.page_at(target_row);
+        if let Some(page) = page.as_ref() {
+            if let Some(batch) = self.read_cached_page(page, target_row, max_rows)? {
+                self.position = target_row + batch.num_rows();
+                return Ok(Some(batch));
+            }
         }
 
         let batch = self.parquet.read_batch_at(target_row, max_rows)?;
         self.position = self.parquet.position();
-        if batch.is_some() && max_rows >= (self.cache_batch_size / 8).max(1) {
-            self.schedule_backfill(target_row);
+        if let (Some(page), Some(_)) = (page, batch.as_ref()) {
+            if admits_page(max_rows, page.row_count) {
+                self.schedule_page_backfill(&page);
+            }
         }
         Ok(batch)
     }
@@ -144,10 +154,10 @@ impl LiquidForwardBatchReader {
     }
 
     fn validate_read(&self, target_row: usize, max_rows: usize) -> ParquetResult<()> {
-        if target_row > self.row_count() {
+        if target_row > self.parquet.row_count() {
             return Err(ParquetError::General(format!(
                 "row {target_row} is beyond Parquet row count {}",
-                self.row_count()
+                self.parquet.row_count()
             )));
         }
         if target_row < self.position {
@@ -156,7 +166,7 @@ impl LiquidForwardBatchReader {
                 self.position
             )));
         }
-        if target_row < self.row_count() && max_rows == 0 {
+        if target_row < self.parquet.row_count() && max_rows == 0 {
             return Err(ParquetError::General(
                 "forward batch size must be greater than zero".to_string(),
             ));
@@ -164,94 +174,101 @@ impl LiquidForwardBatchReader {
         Ok(())
     }
 
-    fn read_cached(
+    /// The cacheable page containing `target_row`, or `None` when the column
+    /// is not cacheable or the page is all-null (served from metadata without
+    /// I/O, so caching it would only waste budget).
+    fn page_at(&self, target_row: usize) -> Option<ParquetForwardPage> {
+        if self.columns.is_empty() {
+            return None;
+        }
+        let index = self
+            .pages
+            .partition_point(|page| page.first_row + page.row_count <= target_row);
+        self.pages
+            .get(index)
+            .filter(|page| target_row >= page.first_row && !page.all_null)
+            .cloned()
+    }
+
+    /// Serves `[target_row, target_row + max_rows)` clamped to the page end
+    /// from a cached whole-page entry, as a zero-copy slice.
+    fn read_cached_page(
         &self,
+        page: &ParquetForwardPage,
         target_row: usize,
         max_rows: usize,
     ) -> ParquetResult<Option<RecordBatch>> {
-        let Some(row_group) = self.cache_row_group(target_row) else {
+        let column = &self.columns[page.row_group_index];
+        let page_id = PageID::from_page_index(page.page_index);
+        let Some(array) = self.runtime.block_on(column.get_page(page_id)) else {
             return Ok(None);
         };
-        let local_row = target_row - row_group.start;
-        let batch_start = local_row / self.cache_batch_size * self.cache_batch_size;
-        let batch_len = self.cache_batch_size.min(row_group.row_count - batch_start);
-        let offset = local_row - batch_start;
-        let rows = max_rows.min(batch_len - offset);
-        let batch_id = BatchID::from_row_id(batch_start, self.cache_batch_size);
-
-        let mut selection = BooleanBufferBuilder::new(batch_len);
-        selection.append_n(offset, false);
-        selection.append_n(rows, true);
-        selection.append_n(batch_len - offset - rows, false);
-        let selection = selection.finish();
-        let Some(array) = self.runtime.block_on(
-            row_group
-                .column
-                .get_arrow_array_with_filter(batch_id, &selection),
-        ) else {
+        if array.len() != page.row_count {
+            log::warn!(
+                "Liquid page-grid entry rg={} page={} holds {} rows, expected {}; ignoring",
+                page.row_group_index,
+                page.page_index,
+                array.len(),
+                page.row_count
+            );
             return Ok(None);
-        };
-        let schema = Arc::new(Schema::new(vec![row_group.column.field()]));
+        }
+        let offset = target_row - page.first_row;
+        let rows = max_rows.min(page.row_count - offset);
+        let array: ArrayRef = array.slice(offset, rows);
+        let schema = Arc::new(Schema::new(vec![Arc::clone(&self.field)]));
         Ok(Some(RecordBatch::try_new(schema, vec![array])?))
     }
 
-    fn schedule_backfill(&self, target_row: usize) {
+    /// Decodes and inserts the whole page in the background, deduplicated so
+    /// concurrent readers of the same page trigger a single backfill.
+    fn schedule_page_backfill(&self, page: &ParquetForwardPage) {
         let Some(cache) = self.cache.as_ref() else {
             return;
         };
-        let Some(row_group) = self.cache_row_group(target_row) else {
+        let column = &self.columns[page.row_group_index];
+        let page_id = PageID::from_page_index(page.page_index);
+        if column.is_page_cached(page_id) {
             return;
-        };
-        let local_row = target_row - row_group.start;
-        let batch_start = local_row / self.cache_batch_size * self.cache_batch_size;
-        let global_start = row_group.start + batch_start;
-        let row_count = self.cache_batch_size.min(row_group.row_count - batch_start);
-        let batch_id = BatchID::from_row_id(batch_start, self.cache_batch_size);
-        let entry_id = row_group.column.entry_id(batch_id);
+        }
+        let entry_id = column.page_entry_id(page_id);
         if !cache.try_start_backfill(entry_id) {
             return;
         }
-        let column = Arc::clone(&row_group.column);
+        let column = Arc::clone(column);
         let factory = Arc::clone(&self.factory);
         let cache = Arc::clone(cache);
+        let first_row = page.first_row;
+        let row_count = page.row_count;
 
         self.runtime.spawn(async move {
             let decoded = tokio::task::spawn_blocking(move || {
                 let mut reader = factory.open()?;
-                reader.read_range_at(global_start, row_count)
+                reader.read_range_at(first_row, row_count)
             })
             .await;
 
             match decoded {
                 Ok(Ok(Some(batch))) if batch.num_rows() == row_count => {
                     let array: ArrayRef = Arc::clone(batch.column(0));
-                    let _ = column.insert(batch_id, array).await;
+                    let _ = column.insert_page(page_id, array).await;
                 }
                 Ok(Ok(Some(batch))) => log::warn!(
-                    "Liquid forward backfill at row {global_start} returned {} of {row_count} rows",
+                    "Liquid page backfill at row {first_row} returned {} of {row_count} rows",
                     batch.num_rows()
                 ),
                 Ok(Ok(None)) => {
-                    log::warn!("Liquid forward backfill ended before row {global_start}")
+                    log::warn!("Liquid page backfill ended before row {first_row}")
                 }
                 Ok(Err(error)) => {
-                    log::warn!("Liquid forward backfill failed at row {global_start}: {error}")
+                    log::warn!("Liquid page backfill failed at row {first_row}: {error}")
                 }
                 Err(error) => {
-                    log::warn!("Liquid forward backfill task failed at row {global_start}: {error}")
+                    log::warn!("Liquid page backfill task failed at row {first_row}: {error}")
                 }
             }
             cache.finish_backfill(entry_id);
         });
-    }
-
-    fn cache_row_group(&self, target_row: usize) -> Option<&CacheRowGroup> {
-        let index = self
-            .cache_row_groups
-            .partition_point(|row_group| row_group.end() <= target_row);
-        self.cache_row_groups
-            .get(index)
-            .filter(|row_group| target_row >= row_group.start && target_row < row_group.end())
     }
 }
 
@@ -267,7 +284,16 @@ fn is_cacheable_type(data_type: &DataType) -> bool {
     data_type.is_numeric()
         || matches!(
             data_type,
-            DataType::Boolean | DataType::Date32 | DataType::Date64 | DataType::Timestamp(_, _)
+            DataType::Boolean
+                | DataType::Date32
+                | DataType::Date64
+                | DataType::Timestamp(_, _)
+                | DataType::Utf8
+                | DataType::LargeUtf8
+                | DataType::Utf8View
+                | DataType::Binary
+                | DataType::LargeBinary
+                | DataType::BinaryView
         )
 }
 
@@ -293,6 +319,9 @@ mod tests {
     use parquet::file::metadata::{PageIndexPolicy, ParquetMetaDataReader};
     use parquet::file::properties::WriterProperties;
 
+    const PAGE_ROWS: usize = 4;
+    const TOTAL_ROWS: usize = 16;
+
     fn test_input() -> (
         Arc<Runtime>,
         SchemaRef,
@@ -305,11 +334,12 @@ mod tests {
         )]));
         let batch = RecordBatch::try_new(
             Arc::clone(&schema),
-            vec![Arc::new(Int32Array::from_iter_values(0..16))],
+            vec![Arc::new(Int32Array::from_iter_values(0..TOTAL_ROWS as i32))],
         )
         .unwrap();
         let properties = WriterProperties::builder()
-            .set_data_page_row_count_limit(4)
+            .set_data_page_row_count_limit(PAGE_ROWS)
+            .set_write_batch_size(PAGE_ROWS)
             .set_offset_index_disabled(false)
             .build();
         let mut data = Vec::new();
@@ -338,7 +368,7 @@ mod tests {
             PartitionedFile::new("data.parquet", data.len() as u64),
             metadata,
             projection,
-            16,
+            TOTAL_ROWS,
             Arc::clone(&runtime),
         ));
         (runtime, schema, factory)
@@ -367,7 +397,7 @@ mod tests {
             ))
             .unwrap();
         Arc::new(runtime.block_on(LiquidCacheParquet::new(
-            8,
+            8192,
             usize::MAX,
             usize::MAX,
             store,
@@ -377,91 +407,133 @@ mod tests {
         )))
     }
 
-    #[test]
-    fn delegates_to_parquet_when_cache_is_disabled() {
-        let (runtime, schema, factory) = test_input();
-        let mut reader = LiquidForwardBatchReader::try_new(
+    fn liquid_reader(
+        factory: Arc<ParquetForwardBatchReaderFactory>,
+        schema: SchemaRef,
+        cache: Option<Arc<LiquidCacheParquet>>,
+        runtime: Arc<Runtime>,
+    ) -> LiquidForwardBatchReader {
+        LiquidForwardBatchReader::try_new(
             factory,
             LiquidForwardReaderConfig {
-                cache: None,
+                cache,
                 file_path: "data.parquet".to_string(),
                 file_schema: schema,
                 root_column_id: 0,
                 runtime,
             },
         )
-        .unwrap();
+        .unwrap()
+    }
+
+    #[test]
+    fn delegates_to_parquet_when_cache_is_disabled() {
+        let (runtime, schema, factory) = test_input();
+        let mut reader = liquid_reader(factory, schema, None, runtime);
 
         let batch = reader.read_batch_at(1, 2).unwrap().unwrap();
         assert_eq!(values(&batch), vec![1, 2]);
     }
 
     #[test]
-    fn reads_selected_rows_from_liquid_cache() {
+    fn serves_window_from_cached_whole_page() {
         let (runtime, schema, factory) = test_input();
         let cache = test_cache(&runtime);
         let file = cache.register_or_get_file("data.parquet".to_string(), Arc::clone(&schema));
         let column = file.create_column(0, 0, true).unwrap();
+        // Page 1 covers rows [4, 8): insert the WHOLE page — the grid's only unit.
         runtime
-            .block_on(column.insert(
-                BatchID::from_row_id(0, 8),
-                Arc::new(Int32Array::from_iter_values(0..8)),
+            .block_on(column.insert_page(
+                PageID::from_page_index(1),
+                Arc::new(Int32Array::from_iter_values(4..8)),
             ))
             .unwrap();
 
-        let mut reader = LiquidForwardBatchReader::try_new(
-            factory,
-            LiquidForwardReaderConfig {
-                cache: Some(cache),
-                file_path: "data.parquet".to_string(),
-                file_schema: schema,
-                root_column_id: 0,
-                runtime,
-            },
-        )
-        .unwrap();
-        let batch = reader.read_batch_at(2, 2).unwrap().unwrap();
-        assert_eq!(values(&batch), vec![2, 3]);
-        assert_eq!(reader.position(), 4);
+        let mut reader = liquid_reader(factory, schema, Some(cache), runtime);
+        let batch = reader.read_batch_at(5, 2).unwrap().unwrap();
+        assert_eq!(values(&batch), vec![5, 6]);
+        assert_eq!(reader.position(), 7);
+
+        // The cached window is clamped at the page end, exactly like Parquet.
+        let batch = reader.read_batch_at(7, 8).unwrap().unwrap();
+        assert_eq!(values(&batch), vec![7]);
+        assert_eq!(reader.position(), 8);
     }
 
     #[test]
-    fn dense_miss_backfills_aligned_liquid_batch() {
+    fn page_and_batch_keys_do_not_collide() {
+        let (runtime, schema, _factory) = test_input();
+        let cache = test_cache(&runtime);
+        let file = cache.register_or_get_file("data.parquet".to_string(), Arc::clone(&schema));
+        let column = file.create_column(0, 0, true).unwrap();
+
+        // Batch-grid entry 0 (scan path) and page-grid entry 0 (doc-values
+        // path) must live in disjoint key spaces.
+        runtime
+            .block_on(column.insert(
+                crate::cache::BatchID::from_row_id(0, 8192),
+                Arc::new(Int32Array::from_iter_values(0..TOTAL_ROWS as i32)),
+            ))
+            .unwrap();
+        assert!(!column.is_page_cached(PageID::from_page_index(0)));
+
+        runtime
+            .block_on(column.insert_page(
+                PageID::from_page_index(0),
+                Arc::new(Int32Array::from_iter_values(0..PAGE_ROWS as i32)),
+            ))
+            .unwrap();
+        let page = runtime
+            .block_on(column.get_page(PageID::from_page_index(0)))
+            .unwrap();
+        assert_eq!(page.len(), PAGE_ROWS);
+    }
+
+    #[test]
+    fn dense_miss_backfills_whole_page() {
         let (runtime, schema, factory) = test_input();
         let cache = test_cache(&runtime);
         let file = cache.register_or_get_file("data.parquet".to_string(), Arc::clone(&schema));
         let column = file.create_column(0, 0, true).unwrap();
-        let batch_id = BatchID::from_row_id(0, 8);
-        let mut reader = LiquidForwardBatchReader::try_new(
+        let mut reader = liquid_reader(
             factory,
-            LiquidForwardReaderConfig {
-                cache: Some(cache),
-                file_path: "data.parquet".to_string(),
-                file_schema: schema,
-                root_column_id: 0,
-                runtime: Arc::clone(&runtime),
-            },
-        )
-        .unwrap();
+            schema,
+            Some(Arc::clone(&cache)),
+            Arc::clone(&runtime),
+        );
 
-        let foreground = reader.read_batch_at(0, 8).unwrap().unwrap();
-        assert_eq!(values(&foreground), vec![0, 1, 2, 3, 4, 5, 6, 7]);
+        // Dense window (full page) → foreground rows from Parquet, whole page
+        // backfilled in the background.
+        let foreground = reader.read_batch_at(4, PAGE_ROWS).unwrap().unwrap();
+        assert_eq!(values(&foreground), vec![4, 5, 6, 7]);
 
+        let page_id = PageID::from_page_index(1);
         let cached = (0..100).find_map(|_| {
-            let array = runtime.block_on(column.get_arrow_array_test_only(batch_id));
+            let array = runtime.block_on(column.get_page(page_id));
             if array.is_none() {
                 std::thread::sleep(std::time::Duration::from_millis(10));
             }
             array
         });
-        let cached = cached.expect("background backfill did not populate Liquid Cache");
+        let cached = cached.expect("background backfill did not populate the page grid");
         assert_eq!(
             cached
                 .as_any()
                 .downcast_ref::<Int32Array>()
                 .unwrap()
                 .values(),
-            &[0, 1, 2, 3, 4, 5, 6, 7]
+            &[4, 5, 6, 7]
         );
+    }
+
+    #[test]
+    fn sparse_windows_are_not_admitted_dense_windows_are() {
+        // Doc-values cursors shrink their window on sparse access and grow it
+        // on dense access, so the window is the admission signal.
+        assert!(!admits_page(1, 8192), "sparse probe must not promote");
+        assert!(!admits_page(1023, 8192), "just below the fraction");
+        assert!(admits_page(1024, 8192), "at the fraction boundary");
+        assert!(admits_page(8192, 8192), "full-page scans promote");
+        assert!(admits_page(1, 4), "tiny pages floor the threshold at 1 row");
     }
 }

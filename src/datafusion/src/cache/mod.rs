@@ -24,7 +24,7 @@ mod stats;
 pub(crate) use column::InsertArrowArrayError;
 pub use column::{CachedColumn, CachedColumnRef};
 pub(crate) use id::ColumnAccessPath;
-pub use id::{BatchID, ParquetArrayID};
+pub use id::{BatchID, PageID, ParquetArrayID};
 
 #[derive(Default, Debug)]
 struct ColumnMaps {
