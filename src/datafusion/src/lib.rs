@@ -2,6 +2,7 @@
 #![doc = include_str!("../README.md")]
 
 mod io;
+mod forward_reader;
 pub mod optimizers;
 mod reader;
 mod sync;
@@ -9,6 +10,7 @@ pub(crate) mod utils;
 
 pub mod cache;
 pub use cache::{LiquidCacheParquet, LiquidCacheParquetRef};
+pub use forward_reader::{LiquidForwardBatchReader, LiquidForwardReaderConfig};
 pub use liquid_cache as storage;
 pub use liquid_cache_common as common;
 pub use reader::variant_udf::{VariantGetUdf, VariantPretty, VariantToJsonUdf};

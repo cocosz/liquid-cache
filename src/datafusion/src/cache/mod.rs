@@ -4,7 +4,7 @@
 use crate::io::ParquetCacheMetadata;
 use crate::reader::{LiquidPredicate, extract_multi_column_or};
 use crate::sync::Mutex;
-use ahash::AHashMap;
+use ahash::{AHashMap, AHashSet};
 use arrow::array::{BooleanArray, RecordBatch};
 use arrow::buffer::BooleanBuffer;
 use arrow_schema::{ArrowError, Field, Schema, SchemaRef};
@@ -211,6 +211,24 @@ impl CachedFile {
         ))
     }
 
+    /// Create one cached-column handle without materializing handles for every
+    /// field in the file schema.
+    pub fn create_column(
+        &self,
+        row_group_id: u64,
+        column_id: u64,
+        cacheable: bool,
+    ) -> Option<CachedColumnRef> {
+        let field = self.file_schema.fields().get(column_id as usize)?.clone();
+        let path = ColumnAccessPath::new(self.file_id, row_group_id, column_id);
+        Some(Arc::new(CachedColumn::new(
+            field,
+            Arc::clone(&self.cache_store),
+            path,
+            cacheable,
+        )))
+    }
+
     /// Return the configured cache batch size.
     pub fn batch_size(&self) -> usize {
         self.cache_store.config().batch_size()
@@ -232,6 +250,8 @@ pub struct LiquidCacheParquet {
     files: Mutex<AHashMap<String, u64>>,
 
     cache_store: Arc<LiquidCache>,
+
+    backfills: Mutex<AHashSet<ParquetArrayID>>,
 
     current_file_id: AtomicU64,
 }
@@ -294,6 +314,7 @@ impl LiquidCacheParquet {
         LiquidCacheParquet {
             files: Mutex::new(AHashMap::new()),
             cache_store: cache_storage,
+            backfills: Mutex::new(AHashSet::new()),
             current_file_id: AtomicU64::new(0),
         }
     }
@@ -320,6 +341,14 @@ impl LiquidCacheParquet {
     /// Get the batch size of the cache.
     pub fn batch_size(&self) -> usize {
         self.cache_store.config().batch_size()
+    }
+
+    pub(crate) fn try_start_backfill(&self, id: ParquetArrayID) -> bool {
+        self.backfills.lock().unwrap().insert(id)
+    }
+
+    pub(crate) fn finish_backfill(&self, id: ParquetArrayID) {
+        self.backfills.lock().unwrap().remove(&id);
     }
 
     /// Get the max memory bytes of the cache.
@@ -365,6 +394,7 @@ impl LiquidCacheParquet {
     pub unsafe fn reset(&self) {
         let mut files = self.files.lock().unwrap();
         files.clear();
+        self.backfills.lock().unwrap().clear();
         self.cache_store.reset();
     }
 
