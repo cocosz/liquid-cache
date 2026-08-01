@@ -97,6 +97,17 @@ impl Display for CacheEntry {
     }
 }
 
+/// A memory-resident entry as returned by `LiquidCache::try_read_memory`.
+/// Exposes the representation so callers choose the cheapest materialization:
+/// zero-copy slicing for Arrow, synchronous selective decode for Liquid.
+#[derive(Debug, Clone)]
+pub enum MemoryEntry {
+    /// Entry resident as an Arrow array.
+    Arrow(ArrayRef),
+    /// Entry resident as a liquid-transcoded array.
+    Liquid(LiquidArrayRef),
+}
+
 /// The type of the cached batch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum CachedBatchType {

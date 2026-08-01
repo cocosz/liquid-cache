@@ -5,7 +5,7 @@ use arrow::{
     record_batch::RecordBatch,
 };
 use arrow_schema::{ArrowError, DataType, Field, Schema};
-use liquid_cache::cache::{CacheExpression, CacheFull, LiquidCache, LiquidExpr};
+use liquid_cache::cache::{CacheExpression, CacheFull, LiquidCache, LiquidExpr, MemoryEntry};
 use parquet::arrow::arrow_reader::ArrowPredicate;
 
 use crate::{
@@ -290,6 +290,48 @@ impl CachedColumn {
         };
         self.record_page_read(result.is_some());
         result
+    }
+
+    /// Synchronously serves `[offset, offset + len)` of a memory-resident
+    /// page: Arrow entries return a zero-copy slice, liquid entries decode
+    /// only the window. Returns `None` when the entry is absent or disk-backed
+    /// — callers fall back to the async [`Self::get_page_rows`] path. This is
+    /// the sparse-read hot path: no runtime entry, no allocation beyond the
+    /// selection bitmap for liquid entries.
+    pub fn read_page_window_sync(
+        &self,
+        page_id: PageID,
+        offset: usize,
+        len: usize,
+        page_rows: usize,
+    ) -> Option<ArrayRef> {
+        debug_assert!(offset + len <= page_rows);
+        let entry_id = self.column_path.entry_id(page_id.slot()).into();
+        let entry = self.cache_store.try_read_memory(&entry_id)?;
+        let result = match entry {
+            MemoryEntry::Arrow(array) => {
+                if array.len() != page_rows {
+                    return None;
+                }
+                if offset == 0 && len == page_rows {
+                    array
+                } else {
+                    array.slice(offset, len)
+                }
+            }
+            MemoryEntry::Liquid(array) => {
+                if array.len() != page_rows {
+                    return None;
+                }
+                let mut selection = BooleanBufferBuilder::new(page_rows);
+                selection.append_n(offset, false);
+                selection.append_n(len, true);
+                selection.append_n(page_rows - offset - len, false);
+                array.filter(&selection.finish())
+            }
+        };
+        self.record_page_read(true);
+        Some(result)
     }
 
     fn record_page_read(&self, hit: bool) {
