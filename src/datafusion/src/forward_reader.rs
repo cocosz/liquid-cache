@@ -21,8 +21,14 @@ pub struct LiquidForwardReaderConfig {
     pub file_schema: SchemaRef,
     /// Root Arrow column index corresponding to the projected Parquet leaf.
     pub root_column_id: usize,
-    /// Runtime used for cache reads and asynchronous backfill.
+    /// Runtime used for asynchronous backfill and disk-backed cache reads.
     pub runtime: Arc<Runtime>,
+    /// Upper bound on rows served per cache hit for fixed-width columns.
+    /// A hit costs one probe regardless of width, so serving the page
+    /// remainder (capped here by the caller's buffer capacity) lets sparse
+    /// readers absorb later rows of the same page without another call.
+    /// Zero restricts hits to the requested window.
+    pub hit_serve_limit: usize,
 }
 
 /// A forward-only reader that probes Liquid Cache's page grid before
@@ -43,6 +49,10 @@ pub struct LiquidForwardBatchReader {
     /// Projected pages in row order (copied from the retained reader's OffsetIndex view).
     pages: Vec<ParquetForwardPage>,
     field: Arc<arrow_schema::Field>,
+    /// Cached single-field schema, built once — hits must not allocate one per probe.
+    hit_schema: SchemaRef,
+    /// Rows a fixed-width hit may serve beyond the requested window (0 = window only).
+    hit_serve_limit: usize,
     runtime: Arc<Runtime>,
     position: usize,
 }
@@ -105,6 +115,16 @@ impl LiquidForwardBatchReader {
             (None, Vec::new(), Vec::new())
         };
 
+        let hit_schema = Arc::new(Schema::new(vec![Arc::clone(&field)]));
+        // Extended hit windows only for fixed-width columns: variable-width
+        // pages can hold megabytes, so serving beyond the window would trade
+        // one probe for a giant copy.
+        let hit_serve_limit = if field.data_type().primitive_width().is_some() {
+            config.hit_serve_limit
+        } else {
+            0
+        };
+
         Ok(Self {
             parquet,
             factory,
@@ -112,6 +132,8 @@ impl LiquidForwardBatchReader {
             columns,
             pages,
             field,
+            hit_schema,
+            hit_serve_limit,
             runtime: config.runtime,
             position: 0,
         })
@@ -190,10 +212,14 @@ impl LiquidForwardBatchReader {
             .cloned()
     }
 
-    /// Serves `[target_row, target_row + max_rows)` clamped to the page end
-    /// from a cached whole-page entry. Only the requested rows are
-    /// materialized: liquid-transcoded entries decode just the selected
-    /// window, so sparse hits never pay for the full page.
+    /// Serves rows starting at `target_row` from a cached whole-page entry.
+    ///
+    /// Memory-resident entries are read synchronously (no runtime entry):
+    /// Arrow pages return zero-copy slices, liquid pages decode only the
+    /// window. Fixed-width hits serve up to `hit_serve_limit` rows — the page
+    /// remainder when possible — so later rows of the same page are absorbed
+    /// by the caller's resident batch without another probe. Disk-backed
+    /// entries fall back to the async path with the requested window.
     fn read_cached_page(
         &self,
         page: &ParquetForwardPage,
@@ -203,25 +229,27 @@ impl LiquidForwardBatchReader {
         let column = &self.columns[page.row_group_index];
         let page_id = PageID::from_page_index(page.page_index);
         let offset = target_row - page.first_row;
-        let rows = max_rows.min(page.row_count - offset);
-        let Some(array) = self
-            .runtime
-            .block_on(column.get_page_rows(page_id, offset, rows, page.row_count))
-        else {
-            return Ok(None);
+        let remaining = page.row_count - offset;
+        let rows = max_rows.max(self.hit_serve_limit).min(remaining);
+
+        let array = match column.read_page_window_sync(page_id, offset, rows, page.row_count) {
+            Some(array) => array,
+            None => {
+                // Absent or disk-backed: one async attempt with the plain window.
+                let rows = max_rows.min(remaining);
+                match self
+                    .runtime
+                    .block_on(column.get_page_rows(page_id, offset, rows, page.row_count))
+                {
+                    Some(array) => array,
+                    None => return Ok(None),
+                }
+            }
         };
-        if array.len() != rows {
-            log::warn!(
-                "Liquid page-grid entry rg={} page={} returned {} rows for a {}-row window; ignoring",
-                page.row_group_index,
-                page.page_index,
-                array.len(),
-                rows
-            );
-            return Ok(None);
-        }
-        let schema = Arc::new(Schema::new(vec![Arc::clone(&self.field)]));
-        Ok(Some(RecordBatch::try_new(schema, vec![array])?))
+        Ok(Some(RecordBatch::try_new(
+            Arc::clone(&self.hit_schema),
+            vec![array],
+        )?))
     }
 
     /// Decodes and inserts the whole page in the background, deduplicated so
@@ -417,6 +445,16 @@ mod tests {
         cache: Option<Arc<LiquidCacheParquet>>,
         runtime: Arc<Runtime>,
     ) -> LiquidForwardBatchReader {
+        liquid_reader_with_limit(factory, schema, cache, runtime, 0)
+    }
+
+    fn liquid_reader_with_limit(
+        factory: Arc<ParquetForwardBatchReaderFactory>,
+        schema: SchemaRef,
+        cache: Option<Arc<LiquidCacheParquet>>,
+        runtime: Arc<Runtime>,
+        hit_serve_limit: usize,
+    ) -> LiquidForwardBatchReader {
         LiquidForwardBatchReader::try_new(
             factory,
             LiquidForwardReaderConfig {
@@ -425,6 +463,7 @@ mod tests {
                 file_schema: schema,
                 root_column_id: 0,
                 runtime,
+                hit_serve_limit,
             },
         )
         .unwrap()
@@ -524,6 +563,27 @@ mod tests {
             .block_on(column.get_page_rows(PageID::from_page_index(0), 0, PAGE_ROWS, PAGE_ROWS))
             .unwrap();
         assert_eq!(whole.len(), PAGE_ROWS);
+    }
+
+    #[test]
+    fn fixed_width_hit_serves_page_remainder_up_to_limit() {
+        let (runtime, schema, factory) = test_input();
+        let cache = test_cache(&runtime);
+        let file = cache.register_or_get_file("data.parquet".to_string(), Arc::clone(&schema));
+        let column = file.create_column(0, 0, true).unwrap();
+        runtime
+            .block_on(column.insert_page(
+                PageID::from_page_index(1),
+                Arc::new(Int32Array::from_iter_values(4..8)),
+            ))
+            .unwrap();
+
+        let mut reader =
+            liquid_reader_with_limit(factory, schema, Some(cache), runtime, TOTAL_ROWS);
+        // Window of 1 row, but the hit serves the page remainder [5, 8).
+        let batch = reader.read_batch_at(5, 1).unwrap().unwrap();
+        assert_eq!(values(&batch), vec![5, 6, 7]);
+        assert_eq!(reader.position(), 8);
     }
 
     #[test]

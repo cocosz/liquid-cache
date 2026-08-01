@@ -9,7 +9,7 @@ use futures::StreamExt;
 use super::{
     budget::BudgetAccounting,
     builders::{EvaluatePredicate, Get, Insert},
-    cached_batch::{CacheEntry, CachedBatchType},
+    cached_batch::{CacheEntry, CachedBatchType, MemoryEntry},
     io_context::{EntryMetadata, entry_id_to_key},
     observer::{CacheTracer, InternalEvent, Observer},
     policies::{CachePolicy, HydrationPolicy, HydrationRequest, MaterializedEntry},
@@ -139,6 +139,24 @@ impl LiquidCache {
         predicate: &'a LiquidExpr,
     ) -> EvaluatePredicate<'a> {
         EvaluatePredicate::new(self, entry_id, predicate)
+    }
+
+    /// Synchronously reads a memory-resident entry without entering the async
+    /// runtime. Returns `None` for absent or disk-backed entries — callers
+    /// fall back to the async [`Self::get`] path for those. Hot sparse readers
+    /// probe once per batch; a runtime round-trip per probe would rival the
+    /// cost of the read itself.
+    pub fn try_read_memory(&self, entry_id: &EntryID) -> Option<MemoryEntry> {
+        let batch = self.index.get(entry_id)?;
+        self.cache_policy
+            .notify_access(entry_id, CachedBatchType::from(batch.as_ref()));
+        match batch.as_ref() {
+            CacheEntry::MemoryArrow(array) => Some(MemoryEntry::Arrow(array.clone())),
+            CacheEntry::MemoryLiquid(array) => Some(MemoryEntry::Liquid(array.clone())),
+            CacheEntry::MemorySqueezedLiquid(_)
+            | CacheEntry::DiskLiquid { .. }
+            | CacheEntry::DiskArrow { .. } => None,
+        }
     }
 
     /// Try to read a liquid array from the cache.
