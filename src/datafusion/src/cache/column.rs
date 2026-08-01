@@ -1,5 +1,5 @@
 use arrow::{
-    array::{Array, ArrayRef, BooleanArray},
+    array::{Array, ArrayRef, BooleanArray, BooleanBufferBuilder},
     buffer::BooleanBuffer,
     compute::prep_null_mask_filter,
     record_batch::RecordBatch,
@@ -252,7 +252,48 @@ impl CachedColumn {
     pub async fn get_page(&self, page_id: PageID) -> Option<ArrayRef> {
         let entry_id = self.column_path.entry_id(page_id.slot()).into();
         let result = self.cache_store.get(&entry_id).read().await;
-        if result.is_some() {
+        self.record_page_read(result.is_some());
+        result
+    }
+
+    /// Reads `[offset, offset + len)` from one cached Parquet data page,
+    /// decoding only the requested rows when the entry is liquid-transcoded.
+    ///
+    /// `page_rows` must be the page's full row count — the length of the array
+    /// inserted through [`Self::insert_page`], which only ever stores whole
+    /// pages. Sparse readers depend on this: materializing a 32-row window
+    /// must not pay for an 8K-row page.
+    pub async fn get_page_rows(
+        &self,
+        page_id: PageID,
+        offset: usize,
+        len: usize,
+        page_rows: usize,
+    ) -> Option<ArrayRef> {
+        debug_assert!(offset + len <= page_rows);
+        let entry_id = self.column_path.entry_id(page_id.slot()).into();
+        let result = if offset == 0 && len == page_rows {
+            // Whole-page read: skip the selection so MemoryArrow entries
+            // return a zero-copy clone.
+            self.cache_store.get(&entry_id).read().await
+        } else {
+            let mut selection = BooleanBufferBuilder::new(page_rows);
+            selection.append_n(offset, false);
+            selection.append_n(len, true);
+            selection.append_n(page_rows - offset - len, false);
+            let selection = selection.finish();
+            self.cache_store
+                .get(&entry_id)
+                .with_selection(&selection)
+                .read()
+                .await
+        };
+        self.record_page_read(result.is_some());
+        result
+    }
+
+    fn record_page_read(&self, hit: bool) {
+        if hit {
             self.cache_store.observer().runtime_stats().incr_cache_hit();
         } else {
             self.cache_store
@@ -260,7 +301,6 @@ impl CachedColumn {
                 .runtime_stats()
                 .incr_cache_miss();
         }
-        result
     }
 
     /// Inserts one whole decoded Parquet data page.
