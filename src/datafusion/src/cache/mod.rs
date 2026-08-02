@@ -253,6 +253,10 @@ pub struct LiquidCacheParquet {
 
     backfills: Mutex<AHashSet<ParquetArrayID>>,
 
+    /// Bounds concurrent background page decodes/inserts so cache population
+    /// never competes with foreground queries for more than a couple of cores.
+    backfill_permits: Arc<tokio::sync::Semaphore>,
+
     current_file_id: AtomicU64,
 }
 
@@ -315,6 +319,7 @@ impl LiquidCacheParquet {
             files: Mutex::new(AHashMap::new()),
             cache_store: cache_storage,
             backfills: Mutex::new(AHashSet::new()),
+            backfill_permits: Arc::new(tokio::sync::Semaphore::new(2)),
             current_file_id: AtomicU64::new(0),
         }
     }
@@ -349,6 +354,12 @@ impl LiquidCacheParquet {
 
     pub(crate) fn finish_backfill(&self, id: ParquetArrayID) {
         self.backfills.lock().unwrap().remove(&id);
+    }
+
+    /// Permits gating background page decodes/inserts. Acquired inside the
+    /// spawned task, never on the query thread.
+    pub(crate) fn backfill_permits(&self) -> Arc<tokio::sync::Semaphore> {
+        Arc::clone(&self.backfill_permits)
     }
 
     /// Get the max memory bytes of the cache.
