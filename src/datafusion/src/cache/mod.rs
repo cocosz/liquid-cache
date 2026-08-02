@@ -253,9 +253,10 @@ pub struct LiquidCacheParquet {
 
     backfills: Mutex<AHashSet<ParquetArrayID>>,
 
-    /// Bounds concurrent background page decodes/inserts so cache population
-    /// never competes with foreground queries for more than a couple of cores.
-    backfill_permits: Arc<tokio::sync::Semaphore>,
+    /// Foreground readers currently open against this cache. Population
+    /// workers yield while this is non-zero so cold queries never share cores
+    /// with cache fills.
+    active_readers: std::sync::atomic::AtomicUsize,
 
     /// Single-drainer queue for inserting foreground-decoded pages. Enqueueing
     /// is one lock-free send on the query thread; the drainer serializes all
@@ -265,13 +266,19 @@ pub struct LiquidCacheParquet {
     current_file_id: AtomicU64,
 }
 
-/// A foreground-decoded page queued for cache insertion.
+/// A page queued for background cache population. Carries coordinates only —
+/// the foreground never donates its decoded arrays (retaining them forces the
+/// allocator to keep every scanned page resident, taxing the query thread);
+/// the drainer decodes independently through a reused reader.
 pub(crate) struct PageInsertJob {
     pub(crate) cache: LiquidCacheParquetRef,
     pub(crate) column: CachedColumnRef,
+    pub(crate) factory: Arc<datafusion::datasource::physical_plan::parquet::ParquetForwardBatchReaderFactory>,
     pub(crate) page_id: PageID,
     pub(crate) entry_id: ParquetArrayID,
-    pub(crate) array: arrow::array::ArrayRef,
+    pub(crate) first_row: usize,
+    pub(crate) row_count: usize,
+    pub(crate) queued_at: std::time::Instant,
 }
 
 /// A reference to the main cache structure.
@@ -333,7 +340,7 @@ impl LiquidCacheParquet {
             files: Mutex::new(AHashMap::new()),
             cache_store: cache_storage,
             backfills: Mutex::new(AHashSet::new()),
-            backfill_permits: Arc::new(tokio::sync::Semaphore::new(2)),
+            active_readers: std::sync::atomic::AtomicUsize::new(0),
             insert_tx: Mutex::new(None),
             current_file_id: AtomicU64::new(0),
         }
@@ -371,10 +378,21 @@ impl LiquidCacheParquet {
         self.backfills.lock().unwrap().remove(&id);
     }
 
-    /// Permits gating background page decodes/inserts. Acquired inside the
-    /// spawned task, never on the query thread.
-    pub(crate) fn backfill_permits(&self) -> Arc<tokio::sync::Semaphore> {
-        Arc::clone(&self.backfill_permits)
+    /// Marks a foreground reader open/closed; population yields while any are active.
+    pub(crate) fn reader_opened(&self) {
+        self.active_readers
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub(crate) fn reader_closed(&self) {
+        self.active_readers
+            .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    fn readers_active(&self) -> bool {
+        self.active_readers
+            .load(std::sync::atomic::Ordering::Relaxed)
+            > 0
     }
 
     /// The page-insert queue sender, creating the drainer task on first use.
@@ -386,13 +404,83 @@ impl LiquidCacheParquet {
         if let Some(tx) = guard.as_ref() {
             return tx.clone();
         }
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<PageInsertJob>();
-        runtime.spawn(async move {
-            while let Some(job) = rx.recv().await {
-                let _ = job.column.insert_page(job.page_id, job.array).await;
-                job.cache.finish_backfill(job.entry_id);
-            }
-        });
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<PageInsertJob>();
+        // Small worker pool: population must converge quickly after a cold
+        // query (mid-selectivity scans enqueue thousands of pages; a single
+        // serial decoder takes seconds, leaving the next query cold), while
+        // staying bounded so cold scans never fight population for cores.
+        // All population work — dedup, decode, insert, transcode — happens
+        // here, off the query threads. The reservation excludes pages another
+        // worker or a decode-backfill already claimed; insert_page's
+        // AlreadyCached check backstops it, so a page whose insert or
+        // transcode is in flight is never re-submitted. Jobs arrive in row
+        // order, so each worker's forward reader mostly skips ahead and is
+        // reopened only when its stream goes backward.
+        const POPULATION_WORKERS: usize = 3;
+        let rx = Arc::new(tokio::sync::Mutex::new(rx));
+        for _ in 0..POPULATION_WORKERS {
+            let rx = Arc::clone(&rx);
+            runtime.spawn(async move {
+                let mut reader: Option<(
+                    usize, // factory identity (Arc pointer)
+                    datafusion::datasource::physical_plan::parquet::ParquetForwardBatchReader,
+                )> = None;
+                loop {
+                    let job = { rx.lock().await.recv().await };
+                    let Some(job) = job else { break };
+                    // Yield to live queries: population waits while any
+                    // foreground reader is open, capped by a job-age bound so
+                    // a continuous query stream cannot starve the cache
+                    // forever. Between queries the queue drains at full speed.
+                    const MAX_YIELD: std::time::Duration = std::time::Duration::from_secs(2);
+                    while job.cache.readers_active() && job.queued_at.elapsed() < MAX_YIELD {
+                        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                    }
+                    if job.column.is_page_cached(job.page_id) {
+                        continue;
+                    }
+                    if !job.cache.try_start_backfill(job.entry_id) {
+                        continue;
+                    }
+                    let factory_key = Arc::as_ptr(&job.factory) as usize;
+                    let reusable = matches!(
+                        &reader,
+                        Some((key, r)) if *key == factory_key && r.position() <= job.first_row
+                    );
+                    if !reusable {
+                        reader = match job.factory.open() {
+                            Ok(r) => Some((factory_key, r)),
+                            Err(error) => {
+                                log::warn!("Liquid page-insert reader open failed: {error}");
+                                job.cache.finish_backfill(job.entry_id);
+                                continue;
+                            }
+                        };
+                    }
+                    let decoded = tokio::task::block_in_place(|| {
+                        let (_, reader) = reader.as_mut().expect("reader initialized above");
+                        reader.read_range_at(job.first_row, job.row_count)
+                    });
+                    match decoded {
+                        Ok(Some(batch)) if batch.num_rows() == job.row_count => {
+                            let array = Arc::clone(batch.column(0));
+                            let _ = job.column.insert_page(job.page_id, array).await;
+                        }
+                        Ok(_) => log::warn!(
+                            "Liquid page insert at row {} decoded unexpected row count",
+                            job.first_row
+                        ),
+                        Err(error) => {
+                            log::warn!(
+                                "Liquid page insert failed at row {}: {error}",
+                                job.first_row
+                            )
+                        }
+                    }
+                    job.cache.finish_backfill(job.entry_id);
+                }
+            });
+        }
         *guard = Some(tx.clone());
         tx
     }
