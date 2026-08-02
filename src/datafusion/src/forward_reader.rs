@@ -162,9 +162,15 @@ impl LiquidForwardBatchReader {
 
         let batch = self.parquet.read_batch_at(target_row, max_rows)?;
         self.position = self.parquet.position();
-        if let (Some(page), Some(_)) = (page, batch.as_ref()) {
+        if let (Some(page), Some(decoded)) = (page, batch.as_ref()) {
             if admits_page(max_rows, page.row_count) {
-                self.schedule_page_backfill(&page);
+                if target_row == page.first_row && decoded.num_rows() == page.row_count {
+                    // The foreground already decoded the whole page: insert
+                    // that array directly — no second decode, no reader open.
+                    self.insert_decoded_page(&page, Arc::clone(decoded.column(0)));
+                } else {
+                    self.schedule_page_backfill(&page);
+                }
             }
         }
         Ok(batch)
@@ -234,8 +240,11 @@ impl LiquidForwardBatchReader {
 
         let array = match column.read_page_window_sync(page_id, offset, rows, page.row_count) {
             Some(array) => array,
+            // Absent entry: a pure miss. Return without entering the runtime —
+            // the cold path must cost one sync index probe and nothing else.
+            None if !column.is_page_cached(page_id) => return Ok(None),
             None => {
-                // Absent or disk-backed: one async attempt with the plain window.
+                // Present but disk-backed: one async read with the plain window.
                 let rows = max_rows.min(remaining);
                 match self
                     .runtime
@@ -250,6 +259,37 @@ impl LiquidForwardBatchReader {
             Arc::clone(&self.hit_schema),
             vec![array],
         )?))
+    }
+
+    /// Inserts a page the foreground already decoded, off the query thread.
+    ///
+    /// Deduplication is identical to [`Self::schedule_page_backfill`]: the
+    /// `try_start_backfill` reservation is the single gate for a page, so two
+    /// queries racing over the same page produce exactly one insert (and one
+    /// eventual transcode) — the loser skips. `insert_page`'s AlreadyCached
+    /// check backstops the window after `finish_backfill`.
+    fn insert_decoded_page(&self, page: &ParquetForwardPage, array: ArrayRef) {
+        let Some(cache) = self.cache.as_ref() else {
+            return;
+        };
+        let column = &self.columns[page.row_group_index];
+        let page_id = PageID::from_page_index(page.page_index);
+        if column.is_page_cached(page_id) {
+            return;
+        }
+        let entry_id = column.page_entry_id(page_id);
+        if !cache.try_start_backfill(entry_id) {
+            return;
+        }
+        let column = Arc::clone(column);
+        let cache = Arc::clone(cache);
+        self.runtime.spawn(async move {
+            // Permit-bounded: insertion can trigger squeeze/transcode work
+            // under memory pressure, which must not swamp foreground cores.
+            let _permit = cache.backfill_permits().acquire_owned().await;
+            let _ = column.insert_page(page_id, array).await;
+            cache.finish_backfill(entry_id);
+        });
     }
 
     /// Decodes and inserts the whole page in the background, deduplicated so
@@ -274,6 +314,9 @@ impl LiquidForwardBatchReader {
         let row_count = page.row_count;
 
         self.runtime.spawn(async move {
+            // Permit-bounded: at most a couple of background decodes run at
+            // once, so cold scans never fight cache population for cores.
+            let _permit = cache.backfill_permits().acquire_owned().await;
             let decoded = tokio::task::spawn_blocking(move || {
                 let mut reader = factory.open()?;
                 reader.read_range_at(first_row, row_count)
@@ -584,6 +627,43 @@ mod tests {
         let batch = reader.read_batch_at(5, 1).unwrap().unwrap();
         assert_eq!(values(&batch), vec![5, 6, 7]);
         assert_eq!(reader.position(), 8);
+    }
+
+    #[test]
+    fn partial_page_read_backfills_via_background_decode() {
+        let (runtime, schema, factory) = test_input();
+        let cache = test_cache(&runtime);
+        let file = cache.register_or_get_file("data.parquet".to_string(), Arc::clone(&schema));
+        let column = file.create_column(0, 0, true).unwrap();
+        let mut reader = liquid_reader(
+            factory,
+            schema,
+            Some(Arc::clone(&cache)),
+            Arc::clone(&runtime),
+        );
+
+        // Mid-page landing: foreground decodes rows [5, 8) of page 1 only, so
+        // the whole page must come from the background reader.
+        let foreground = reader.read_batch_at(5, PAGE_ROWS).unwrap().unwrap();
+        assert_eq!(values(&foreground), vec![5, 6, 7]);
+
+        let page_id = PageID::from_page_index(1);
+        let cached = (0..100).find_map(|_| {
+            let array = runtime.block_on(column.get_page(page_id));
+            if array.is_none() {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            array
+        });
+        let cached = cached.expect("partial-page miss did not backfill the whole page");
+        assert_eq!(
+            cached
+                .as_any()
+                .downcast_ref::<Int32Array>()
+                .unwrap()
+                .values(),
+            &[4, 5, 6, 7]
+        );
     }
 
     #[test]
