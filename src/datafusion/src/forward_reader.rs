@@ -9,7 +9,7 @@ use datafusion::datasource::physical_plan::parquet::{
 use parquet::errors::{ParquetError, Result as ParquetResult};
 use tokio::runtime::Runtime;
 
-use crate::cache::{CachedColumnRef, LiquidCacheParquetRef, PageID};
+use crate::cache::{CachedColumnRef, LiquidCacheParquetRef, PageID, PageInsertJob};
 
 /// Liquid Cache configuration for a forward-only Parquet reader.
 pub struct LiquidForwardReaderConfig {
@@ -53,6 +53,8 @@ pub struct LiquidForwardBatchReader {
     hit_schema: SchemaRef,
     /// Rows a fixed-width hit may serve beyond the requested window (0 = window only).
     hit_serve_limit: usize,
+    /// Queue for foreground-decoded page inserts; one lock-free send per page.
+    insert_tx: Option<tokio::sync::mpsc::UnboundedSender<PageInsertJob>>,
     runtime: Arc<Runtime>,
     position: usize,
 }
@@ -125,6 +127,11 @@ impl LiquidForwardBatchReader {
             0
         };
 
+        let insert_tx = cache
+            .as_ref()
+            .filter(|_| !columns.is_empty())
+            .map(|cache| cache.page_insert_queue(&config.runtime));
+
         Ok(Self {
             parquet,
             factory,
@@ -134,6 +141,7 @@ impl LiquidForwardBatchReader {
             field,
             hit_schema,
             hit_serve_limit,
+            insert_tx,
             runtime: config.runtime,
             position: 0,
         })
@@ -272,6 +280,9 @@ impl LiquidForwardBatchReader {
         let Some(cache) = self.cache.as_ref() else {
             return;
         };
+        let Some(insert_tx) = self.insert_tx.as_ref() else {
+            return;
+        };
         let column = &self.columns[page.row_group_index];
         let page_id = PageID::from_page_index(page.page_index);
         if column.is_page_cached(page_id) {
@@ -281,14 +292,12 @@ impl LiquidForwardBatchReader {
         if !cache.try_start_backfill(entry_id) {
             return;
         }
-        let column = Arc::clone(column);
-        let cache = Arc::clone(cache);
-        self.runtime.spawn(async move {
-            // Permit-bounded: insertion can trigger squeeze/transcode work
-            // under memory pressure, which must not swamp foreground cores.
-            let _permit = cache.backfill_permits().acquire_owned().await;
-            let _ = column.insert_page(page_id, array).await;
-            cache.finish_backfill(entry_id);
+        let _ = insert_tx.send(PageInsertJob {
+            cache: Arc::clone(cache),
+            column: Arc::clone(column),
+            page_id,
+            entry_id,
+            array,
         });
     }
 

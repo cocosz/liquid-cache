@@ -257,7 +257,21 @@ pub struct LiquidCacheParquet {
     /// never competes with foreground queries for more than a couple of cores.
     backfill_permits: Arc<tokio::sync::Semaphore>,
 
+    /// Single-drainer queue for inserting foreground-decoded pages. Enqueueing
+    /// is one lock-free send on the query thread; the drainer serializes all
+    /// insert (and eventual transcode) work onto one background task.
+    insert_tx: Mutex<Option<tokio::sync::mpsc::UnboundedSender<PageInsertJob>>>,
+
     current_file_id: AtomicU64,
+}
+
+/// A foreground-decoded page queued for cache insertion.
+pub(crate) struct PageInsertJob {
+    pub(crate) cache: LiquidCacheParquetRef,
+    pub(crate) column: CachedColumnRef,
+    pub(crate) page_id: PageID,
+    pub(crate) entry_id: ParquetArrayID,
+    pub(crate) array: arrow::array::ArrayRef,
 }
 
 /// A reference to the main cache structure.
@@ -320,6 +334,7 @@ impl LiquidCacheParquet {
             cache_store: cache_storage,
             backfills: Mutex::new(AHashSet::new()),
             backfill_permits: Arc::new(tokio::sync::Semaphore::new(2)),
+            insert_tx: Mutex::new(None),
             current_file_id: AtomicU64::new(0),
         }
     }
@@ -360,6 +375,26 @@ impl LiquidCacheParquet {
     /// spawned task, never on the query thread.
     pub(crate) fn backfill_permits(&self) -> Arc<tokio::sync::Semaphore> {
         Arc::clone(&self.backfill_permits)
+    }
+
+    /// The page-insert queue sender, creating the drainer task on first use.
+    pub(crate) fn page_insert_queue(
+        &self,
+        runtime: &tokio::runtime::Runtime,
+    ) -> tokio::sync::mpsc::UnboundedSender<PageInsertJob> {
+        let mut guard = self.insert_tx.lock().unwrap();
+        if let Some(tx) = guard.as_ref() {
+            return tx.clone();
+        }
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<PageInsertJob>();
+        runtime.spawn(async move {
+            while let Some(job) = rx.recv().await {
+                let _ = job.column.insert_page(job.page_id, job.array).await;
+                job.cache.finish_backfill(job.entry_id);
+            }
+        });
+        *guard = Some(tx.clone());
+        tx
     }
 
     /// Get the max memory bytes of the cache.
