@@ -667,6 +667,47 @@ mod tests {
     }
 
     #[test]
+    fn in_flight_page_is_not_resubmitted() {
+        let (runtime, schema, factory) = test_input();
+        let cache = test_cache(&runtime);
+        let file = cache.register_or_get_file("data.parquet".to_string(), Arc::clone(&schema));
+        let column = file.create_column(0, 0, true).unwrap();
+        let page_id = PageID::from_page_index(1);
+        let entry_id = column.page_entry_id(page_id);
+
+        // Simulate an in-flight transcode: the reservation is held.
+        assert!(cache.try_start_backfill(entry_id));
+
+        let mut full_reader = liquid_reader(
+            Arc::clone(&factory),
+            Arc::clone(&schema),
+            Some(Arc::clone(&cache)),
+            Arc::clone(&runtime),
+        );
+        let mut partial_reader = liquid_reader(
+            factory,
+            schema,
+            Some(Arc::clone(&cache)),
+            Arc::clone(&runtime),
+        );
+        // Both a whole-page read (direct-insert path) and a partial read
+        // (decode path) must skip submission while the reservation is held.
+        let full = full_reader.read_batch_at(4, PAGE_ROWS).unwrap().unwrap();
+        assert_eq!(values(&full), vec![4, 5, 6, 7]);
+        let partial = partial_reader.read_batch_at(5, 1).unwrap().unwrap();
+        assert_eq!(values(&partial), vec![5]);
+
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        assert!(
+            runtime.block_on(column.get_page(page_id)).is_none(),
+            "page was inserted despite an in-flight reservation"
+        );
+        // A second reservation attempt for the same page must also lose.
+        assert!(!cache.try_start_backfill(entry_id));
+        cache.finish_backfill(entry_id);
+    }
+
+    #[test]
     fn dense_miss_backfills_whole_page() {
         let (runtime, schema, factory) = test_input();
         let cache = test_cache(&runtime);
