@@ -9,9 +9,10 @@ use datafusion::datasource::physical_plan::parquet::{
 use parquet::errors::{ParquetError, Result as ParquetResult};
 use tokio::runtime::Runtime;
 
-use crate::cache::{CachedColumnRef, LiquidCacheParquetRef, PageID, PageInsertJob};
+use crate::cache::{CachedColumnRef, LiquidCacheParquetRef, PageID, PageInsertJob, PageWindowProbe};
 
 /// Liquid Cache configuration for a forward-only Parquet reader.
+#[derive(Clone)]
 pub struct LiquidForwardReaderConfig {
     /// Cache instance to probe and populate, or `None` to use Parquet directly.
     pub cache: Option<LiquidCacheParquetRef>,
@@ -54,7 +55,14 @@ pub struct LiquidForwardBatchReader {
     /// Rows a fixed-width hit may serve beyond the requested window (0 = window only).
     hit_serve_limit: usize,
     /// Queue for foreground-decoded page inserts; one lock-free send per page.
-    insert_tx: Option<tokio::sync::mpsc::UnboundedSender<PageInsertJob>>,
+    insert_tx: Option<std::sync::mpsc::Sender<PageInsertJob>>,
+    /// Locally buffered population jobs. Each channel send wakes a worker
+    /// task, so per-page sends tax cold scans with thousands of wakeups;
+    /// buffering makes the foreground cost a plain Vec push, flushed in bulk
+    /// at reader drop (query end) or every [`Self::FLUSH_THRESHOLD`] pages.
+    pending_jobs: Vec<PageInsertJob>,
+    /// O(1) hint for [`Self::page_at`]: index of the last page served.
+    page_hint: usize,
     runtime: Arc<Runtime>,
     position: usize,
 }
@@ -146,6 +154,8 @@ impl LiquidForwardBatchReader {
             hit_schema,
             hit_serve_limit,
             insert_tx,
+            pending_jobs: Vec::new(),
+            page_hint: 0,
             runtime: config.runtime,
             position: 0,
         })
@@ -175,9 +185,9 @@ impl LiquidForwardBatchReader {
         let batch = self.parquet.read_batch_at(target_row, max_rows)?;
         self.position = self.parquet.position();
         if let (Some(page), Some(_)) = (page, batch.as_ref()) {
-            if admits_page(max_rows, page.row_count) {
-                self.enqueue_page_insert(&page);
-            }
+            // Dense misses are admitted for population unconditionally; sparse
+            // misses are second-chance candidates counted by the drainer.
+            self.enqueue_page_insert(&page, admits_page(max_rows, page.row_count));
         }
         Ok(batch)
     }
@@ -185,6 +195,21 @@ impl LiquidForwardBatchReader {
     /// Current logical position, including batches served by Liquid Cache.
     pub fn position(&self) -> usize {
         self.position
+    }
+
+    /// Rewinds to row zero by rebuilding only the inner Parquet reader.
+    ///
+    /// Sharing a forward-only cursor between interleaved consumers (concurrent
+    /// segment-search slices) makes backward seeks routine; a full reopen —
+    /// object-store head, page-index load, cache re-registration, per-row-group
+    /// column handles — showed up as the top native cost under profile. Reset
+    /// retains everything except the decoder itself.
+    pub fn reset(&mut self) -> ParquetResult<()> {
+        self.flush_pending_jobs();
+        self.parquet = self.factory.open()?;
+        self.position = 0;
+        self.page_hint = 0;
+        Ok(())
     }
 
     fn validate_read(&self, target_row: usize, max_rows: usize) -> ParquetResult<()> {
@@ -210,14 +235,27 @@ impl LiquidForwardBatchReader {
 
     /// The cacheable page containing `target_row`, or `None` when the column
     /// is not cacheable or the page is all-null (served from metadata without
-    /// I/O, so caching it would only waste budget).
-    fn page_at(&self, target_row: usize) -> Option<ParquetForwardPage> {
+    /// I/O, so caching it would only waste budget). Forward readers visit
+    /// pages in row order, so the previous index (or its successor) answers
+    /// almost every probe in O(1); the binary search is a cold-start/jump
+    /// fallback — at ~14 cache-cold accesses over thousands of pages it costs
+    /// more than the cache-index lookup itself.
+    fn page_at(&mut self, target_row: usize) -> Option<ParquetForwardPage> {
         if self.columns.is_empty() {
             return None;
         }
-        let index = self
-            .pages
-            .partition_point(|page| page.first_row + page.row_count <= target_row);
+        let contains = |page: &ParquetForwardPage| {
+            target_row >= page.first_row && target_row < page.first_row + page.row_count
+        };
+        let index = if self.pages.get(self.page_hint).is_some_and(contains) {
+            self.page_hint
+        } else if self.pages.get(self.page_hint + 1).is_some_and(contains) {
+            self.page_hint + 1
+        } else {
+            self.pages
+                .partition_point(|page| page.first_row + page.row_count <= target_row)
+        };
+        self.page_hint = index;
         self.pages
             .get(index)
             .filter(|page| target_row >= page.first_row && !page.all_null)
@@ -245,12 +283,11 @@ impl LiquidForwardBatchReader {
         let rows = max_rows.max(self.hit_serve_limit).min(remaining);
 
         let array = match column.read_page_window_sync(page_id, offset, rows, page.row_count) {
-            Some(array) => array,
-            // Absent entry: a pure miss. Return without entering the runtime —
-            // the cold path must cost one sync index probe and nothing else.
-            None if !column.is_page_cached(page_id) => return Ok(None),
-            None => {
-                // Present but disk-backed: one async read with the plain window.
+            PageWindowProbe::Served(array) => array,
+            // Pure miss: return after the single sync index probe.
+            PageWindowProbe::Absent => return Ok(None),
+            PageWindowProbe::DiskBacked => {
+                // One async read with the plain window.
                 let rows = max_rows.min(remaining);
                 match self
                     .runtime
@@ -273,16 +310,16 @@ impl LiquidForwardBatchReader {
     /// transcode is already in flight), decode, insert, and transcode all
     /// happen in the queue's single drainer with a reused reader; see
     /// [`LiquidCacheParquet::page_insert_queue`].
-    fn enqueue_page_insert(&self, page: &ParquetForwardPage) {
+    fn enqueue_page_insert(&mut self, page: &ParquetForwardPage, admitted: bool) {
         let Some(cache) = self.cache.as_ref() else {
             return;
         };
-        let Some(insert_tx) = self.insert_tx.as_ref() else {
+        if self.insert_tx.is_none() {
             return;
-        };
+        }
         let column = &self.columns[page.row_group_index];
         let page_id = PageID::from_page_index(page.page_index);
-        let _ = insert_tx.send(PageInsertJob {
+        self.pending_jobs.push(PageInsertJob {
             cache: Arc::clone(cache),
             column: Arc::clone(column),
             factory: Arc::clone(&self.factory),
@@ -291,12 +328,33 @@ impl LiquidForwardBatchReader {
             first_row: page.first_row,
             row_count: page.row_count,
             queued_at: std::time::Instant::now(),
+            admitted,
         });
+        if self.pending_jobs.len() >= Self::FLUSH_THRESHOLD {
+            self.flush_pending_jobs();
+        }
     }
+
+    /// Bulk-sends buffered population jobs; at most one worker wakeup per flush.
+    fn flush_pending_jobs(&mut self) {
+        let Some(insert_tx) = self.insert_tx.as_ref() else {
+            return;
+        };
+        for job in self.pending_jobs.drain(..) {
+            let _ = insert_tx.send(job);
+        }
+    }
+
+    /// Effectively flush-on-drop: a query's touches are handed to the
+    /// population workers only when its reader closes, so zero worker wakeups
+    /// or queue traffic occur while the query runs. The threshold only bounds
+    /// pathological single-reader lifetimes (~13MB of buffered jobs).
+    const FLUSH_THRESHOLD: usize = 100_000;
 }
 
 impl Drop for LiquidForwardBatchReader {
     fn drop(&mut self) {
+        self.flush_pending_jobs();
         if let Some(cache) = self.cache.as_ref() {
             cache.reader_closed();
         }
