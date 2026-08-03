@@ -4,7 +4,7 @@
 use crate::io::ParquetCacheMetadata;
 use crate::reader::{LiquidPredicate, extract_multi_column_or};
 use crate::sync::Mutex;
-use ahash::AHashMap;
+use ahash::{AHashMap, AHashSet};
 use arrow::array::{BooleanArray, RecordBatch};
 use arrow::buffer::BooleanBuffer;
 use arrow_schema::{ArrowError, Field, Schema, SchemaRef};
@@ -22,9 +22,9 @@ mod id;
 mod stats;
 
 pub(crate) use column::InsertArrowArrayError;
-pub use column::{CachedColumn, CachedColumnRef};
+pub use column::{CachedColumn, CachedColumnRef, PageWindowProbe};
 pub(crate) use id::ColumnAccessPath;
-pub use id::{BatchID, ParquetArrayID};
+pub use id::{BatchID, PageID, ParquetArrayID};
 
 #[derive(Default, Debug)]
 struct ColumnMaps {
@@ -211,6 +211,24 @@ impl CachedFile {
         ))
     }
 
+    /// Create one cached-column handle without materializing handles for every
+    /// field in the file schema.
+    pub fn create_column(
+        &self,
+        row_group_id: u64,
+        column_id: u64,
+        cacheable: bool,
+    ) -> Option<CachedColumnRef> {
+        let field = self.file_schema.fields().get(column_id as usize)?.clone();
+        let path = ColumnAccessPath::new(self.file_id, row_group_id, column_id);
+        Some(Arc::new(CachedColumn::new(
+            field,
+            Arc::clone(&self.cache_store),
+            path,
+            cacheable,
+        )))
+    }
+
     /// Return the configured cache batch size.
     pub fn batch_size(&self) -> usize {
         self.cache_store.config().batch_size()
@@ -233,7 +251,40 @@ pub struct LiquidCacheParquet {
 
     cache_store: Arc<LiquidCache>,
 
+    backfills: Mutex<AHashSet<ParquetArrayID>>,
+
+    /// Foreground readers currently open against this cache. Population
+    /// workers yield while this is non-zero so cold queries never share cores
+    /// with cache fills.
+    active_readers: std::sync::atomic::AtomicUsize,
+
+    /// Single-drainer queue for inserting foreground-decoded pages. Enqueueing
+    /// is one lock-free send on the query thread; the drainer serializes all
+    /// insert (and eventual transcode) work onto one background task.
+    insert_tx: Mutex<Option<std::sync::mpsc::Sender<PageInsertJob>>>,
+
     current_file_id: AtomicU64,
+}
+
+/// A page queued for background cache population. Carries coordinates only —
+/// the foreground never donates its decoded arrays (retaining them forces the
+/// allocator to keep every scanned page resident, taxing the query thread);
+/// the drainer decodes independently through a reused reader.
+pub(crate) struct PageInsertJob {
+    pub(crate) cache: LiquidCacheParquetRef,
+    pub(crate) column: CachedColumnRef,
+    pub(crate) factory: Arc<datafusion::datasource::physical_plan::parquet::ParquetForwardBatchReaderFactory>,
+    pub(crate) page_id: PageID,
+    pub(crate) entry_id: ParquetArrayID,
+    pub(crate) first_row: usize,
+    pub(crate) row_count: usize,
+    pub(crate) queued_at: std::time::Instant,
+    /// Dense misses (window ≥ page/8) are admitted unconditionally. Sparse
+    /// misses are second-chance candidates: the drainer counts distinct query
+    /// episodes touching the page and promotes on the second, so a repeated
+    /// sparse query converges to fully cached without letting one-off sparse
+    /// scans pollute the cache.
+    pub(crate) admitted: bool,
 }
 
 /// A reference to the main cache structure.
@@ -294,6 +345,9 @@ impl LiquidCacheParquet {
         LiquidCacheParquet {
             files: Mutex::new(AHashMap::new()),
             cache_store: cache_storage,
+            backfills: Mutex::new(AHashSet::new()),
+            active_readers: std::sync::atomic::AtomicUsize::new(0),
+            insert_tx: Mutex::new(None),
             current_file_id: AtomicU64::new(0),
         }
     }
@@ -320,6 +374,137 @@ impl LiquidCacheParquet {
     /// Get the batch size of the cache.
     pub fn batch_size(&self) -> usize {
         self.cache_store.config().batch_size()
+    }
+
+    pub(crate) fn try_start_backfill(&self, id: ParquetArrayID) -> bool {
+        self.backfills.lock().unwrap().insert(id)
+    }
+
+    pub(crate) fn finish_backfill(&self, id: ParquetArrayID) {
+        self.backfills.lock().unwrap().remove(&id);
+    }
+
+    /// Marks a foreground reader open/closed; population yields while any are active.
+    pub(crate) fn reader_opened(&self) {
+        self.active_readers
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub(crate) fn reader_closed(&self) {
+        self.active_readers
+            .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    fn readers_active(&self) -> bool {
+        self.active_readers
+            .load(std::sync::atomic::Ordering::Relaxed)
+            > 0
+    }
+
+    /// The page-insert queue sender, creating the population thread on first use.
+    pub(crate) fn page_insert_queue(
+        &self,
+        runtime: &tokio::runtime::Runtime,
+    ) -> std::sync::mpsc::Sender<PageInsertJob> {
+        let mut guard = self.insert_tx.lock().unwrap();
+        if let Some(tx) = guard.as_ref() {
+            return tx.clone();
+        }
+        let (tx, rx) = std::sync::mpsc::channel::<PageInsertJob>();
+        let handle = runtime.handle().clone();
+        // One plain OS thread owns all population work: dedup, second-chance
+        // touch counting (a thread-local map — no locks anywhere), decode via
+        // a reused reader, and insert. No tokio in the loop: block_in_place
+        // spawns a replacement worker per call and queue wakeups tax the
+        // foreground, which is exactly what this design removes. The thread
+        // yields unconditionally while any foreground reader is open —
+        // population is an optimization and never shares the machine with a
+        // live query; under continuous pressure it waits for the next lull.
+        std::thread::Builder::new()
+            .name("liquid-page-population".to_string())
+            .spawn(move || {
+                const TOUCH_EPISODE_GAP: std::time::Duration =
+                    std::time::Duration::from_millis(100);
+                const TOUCH_PROMOTE_AT: u32 = 2;
+                const TOUCH_MAP_CAP: usize = 1 << 20;
+                let mut touches: AHashMap<ParquetArrayID, (std::time::Instant, u32)> =
+                    AHashMap::new();
+                let mut reader: Option<(
+                    usize, // factory identity (Arc pointer)
+                    datafusion::datasource::physical_plan::parquet::ParquetForwardBatchReader,
+                )> = None;
+                while let Ok(job) = rx.recv() {
+                    while job.cache.readers_active() {
+                        std::thread::sleep(std::time::Duration::from_millis(10));
+                    }
+                    // Second-chance gate for sparse touches: distinct query
+                    // episodes (touches separated by more than the gap) are
+                    // counted; the second promotes. Dense misses skip the gate.
+                    if !job.admitted {
+                        if touches.len() >= TOUCH_MAP_CAP {
+                            touches.clear();
+                        }
+                        let now = std::time::Instant::now();
+                        let entry = touches.entry(job.entry_id).or_insert((now, 0));
+                        if entry.1 == 0 || now.duration_since(entry.0) > TOUCH_EPISODE_GAP {
+                            entry.0 = now;
+                            entry.1 += 1;
+                        }
+                        if entry.1 < TOUCH_PROMOTE_AT {
+                            continue;
+                        }
+                        touches.remove(&job.entry_id);
+                    }
+                    // Dedup: the reservation excludes pages already in flight
+                    // (insert_page's AlreadyCached check backstops it), so a
+                    // page being inserted or transcoded is never re-submitted.
+                    if job.column.is_page_cached(job.page_id) {
+                        continue;
+                    }
+                    if !job.cache.try_start_backfill(job.entry_id) {
+                        continue;
+                    }
+                    let factory_key = Arc::as_ptr(&job.factory) as usize;
+                    let reusable = matches!(
+                        &reader,
+                        Some((key, r)) if *key == factory_key && r.position() <= job.first_row
+                    );
+                    if !reusable {
+                        reader = match job.factory.open() {
+                            Ok(r) => Some((factory_key, r)),
+                            Err(error) => {
+                                log::warn!("Liquid page-insert reader open failed: {error}");
+                                job.cache.finish_backfill(job.entry_id);
+                                continue;
+                            }
+                        };
+                    }
+                    let decoded = {
+                        let (_, reader) = reader.as_mut().expect("reader initialized above");
+                        reader.read_range_at(job.first_row, job.row_count)
+                    };
+                    match decoded {
+                        Ok(Some(batch)) if batch.num_rows() == job.row_count => {
+                            let array = Arc::clone(batch.column(0));
+                            let _ = handle.block_on(job.column.insert_page(job.page_id, array));
+                        }
+                        Ok(_) => log::warn!(
+                            "Liquid page insert at row {} decoded unexpected row count",
+                            job.first_row
+                        ),
+                        Err(error) => {
+                            log::warn!(
+                                "Liquid page insert failed at row {}: {error}",
+                                job.first_row
+                            )
+                        }
+                    }
+                    job.cache.finish_backfill(job.entry_id);
+                }
+            })
+            .expect("failed to spawn liquid page-population thread");
+        *guard = Some(tx.clone());
+        tx
     }
 
     /// Get the max memory bytes of the cache.
@@ -365,6 +550,7 @@ impl LiquidCacheParquet {
     pub unsafe fn reset(&self) {
         let mut files = self.files.lock().unwrap();
         files.clear();
+        self.backfills.lock().unwrap().clear();
         self.cache_store.reset();
     }
 

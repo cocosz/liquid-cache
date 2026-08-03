@@ -162,7 +162,15 @@ impl LiquidCacheLocalBuilder {
         config.options_mut().execution.parquet.skip_metadata = false;
         config.options_mut().execution.batch_size = self.batch_size;
 
-        let store = t4::mount(self.cache_dir.join("liquid_cache.t4"))
+        // Disk tier: O_DIRECT + O_DSYNC on Linux (production default). Other
+        // platforms fall back to buffered I/O — macOS/Windows have no O_DIRECT
+        // — which changes durability characteristics of the disk tier only,
+        // never correctness; the in-memory cache is identical everywhere.
+        let mount_options = t4::MountOptions {
+            direct_io: cfg!(target_os = "linux"),
+            ..Default::default()
+        };
+        let store = t4::mount_with_options(self.cache_dir.join("liquid_cache.t4"), mount_options)
             .await
             .map_err(|e| datafusion::error::DataFusionError::External(Box::new(e)))?;
         #[cfg(not(test))]
