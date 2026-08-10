@@ -22,7 +22,7 @@ mod id;
 mod stats;
 
 pub(crate) use column::InsertArrowArrayError;
-pub use column::{CachedColumn, CachedColumnRef};
+pub use column::{CachedColumn, CachedColumnRef, PageWindowProbe};
 pub(crate) use id::ColumnAccessPath;
 pub use id::{BatchID, PageID, ParquetArrayID};
 
@@ -261,7 +261,7 @@ pub struct LiquidCacheParquet {
     /// Single-drainer queue for inserting foreground-decoded pages. Enqueueing
     /// is one lock-free send on the query thread; the drainer serializes all
     /// insert (and eventual transcode) work onto one background task.
-    insert_tx: Mutex<Option<tokio::sync::mpsc::UnboundedSender<PageInsertJob>>>,
+    insert_tx: Mutex<Option<std::sync::mpsc::Sender<PageInsertJob>>>,
 
     current_file_id: AtomicU64,
 }
@@ -279,6 +279,12 @@ pub(crate) struct PageInsertJob {
     pub(crate) first_row: usize,
     pub(crate) row_count: usize,
     pub(crate) queued_at: std::time::Instant,
+    /// Dense misses (window ≥ page/8) are admitted unconditionally. Sparse
+    /// misses are second-chance candidates: the drainer counts distinct query
+    /// episodes touching the page and promotes on the second, so a repeated
+    /// sparse query converges to fully cached without letting one-off sparse
+    /// scans pollute the cache.
+    pub(crate) admitted: bool,
 }
 
 /// A reference to the main cache structure.
@@ -395,47 +401,63 @@ impl LiquidCacheParquet {
             > 0
     }
 
-    /// The page-insert queue sender, creating the drainer task on first use.
+    /// The page-insert queue sender, creating the population thread on first use.
     pub(crate) fn page_insert_queue(
         &self,
         runtime: &tokio::runtime::Runtime,
-    ) -> tokio::sync::mpsc::UnboundedSender<PageInsertJob> {
+    ) -> std::sync::mpsc::Sender<PageInsertJob> {
         let mut guard = self.insert_tx.lock().unwrap();
         if let Some(tx) = guard.as_ref() {
             return tx.clone();
         }
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<PageInsertJob>();
-        // Small worker pool: population must converge quickly after a cold
-        // query (mid-selectivity scans enqueue thousands of pages; a single
-        // serial decoder takes seconds, leaving the next query cold), while
-        // staying bounded so cold scans never fight population for cores.
-        // All population work — dedup, decode, insert, transcode — happens
-        // here, off the query threads. The reservation excludes pages another
-        // worker or a decode-backfill already claimed; insert_page's
-        // AlreadyCached check backstops it, so a page whose insert or
-        // transcode is in flight is never re-submitted. Jobs arrive in row
-        // order, so each worker's forward reader mostly skips ahead and is
-        // reopened only when its stream goes backward.
-        const POPULATION_WORKERS: usize = 3;
-        let rx = Arc::new(tokio::sync::Mutex::new(rx));
-        for _ in 0..POPULATION_WORKERS {
-            let rx = Arc::clone(&rx);
-            runtime.spawn(async move {
+        let (tx, rx) = std::sync::mpsc::channel::<PageInsertJob>();
+        let handle = runtime.handle().clone();
+        // One plain OS thread owns all population work: dedup, second-chance
+        // touch counting (a thread-local map — no locks anywhere), decode via
+        // a reused reader, and insert. No tokio in the loop: block_in_place
+        // spawns a replacement worker per call and queue wakeups tax the
+        // foreground, which is exactly what this design removes. The thread
+        // yields unconditionally while any foreground reader is open —
+        // population is an optimization and never shares the machine with a
+        // live query; under continuous pressure it waits for the next lull.
+        std::thread::Builder::new()
+            .name("liquid-page-population".to_string())
+            .spawn(move || {
+                const TOUCH_EPISODE_GAP: std::time::Duration =
+                    std::time::Duration::from_millis(100);
+                const TOUCH_PROMOTE_AT: u32 = 2;
+                const TOUCH_MAP_CAP: usize = 1 << 20;
+                let mut touches: AHashMap<ParquetArrayID, (std::time::Instant, u32)> =
+                    AHashMap::new();
                 let mut reader: Option<(
                     usize, // factory identity (Arc pointer)
                     datafusion::datasource::physical_plan::parquet::ParquetForwardBatchReader,
                 )> = None;
-                loop {
-                    let job = { rx.lock().await.recv().await };
-                    let Some(job) = job else { break };
-                    // Yield to live queries: population waits while any
-                    // foreground reader is open, capped by a job-age bound so
-                    // a continuous query stream cannot starve the cache
-                    // forever. Between queries the queue drains at full speed.
-                    const MAX_YIELD: std::time::Duration = std::time::Duration::from_secs(2);
-                    while job.cache.readers_active() && job.queued_at.elapsed() < MAX_YIELD {
-                        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                while let Ok(job) = rx.recv() {
+                    while job.cache.readers_active() {
+                        std::thread::sleep(std::time::Duration::from_millis(10));
                     }
+                    // Second-chance gate for sparse touches: distinct query
+                    // episodes (touches separated by more than the gap) are
+                    // counted; the second promotes. Dense misses skip the gate.
+                    if !job.admitted {
+                        if touches.len() >= TOUCH_MAP_CAP {
+                            touches.clear();
+                        }
+                        let now = std::time::Instant::now();
+                        let entry = touches.entry(job.entry_id).or_insert((now, 0));
+                        if entry.1 == 0 || now.duration_since(entry.0) > TOUCH_EPISODE_GAP {
+                            entry.0 = now;
+                            entry.1 += 1;
+                        }
+                        if entry.1 < TOUCH_PROMOTE_AT {
+                            continue;
+                        }
+                        touches.remove(&job.entry_id);
+                    }
+                    // Dedup: the reservation excludes pages already in flight
+                    // (insert_page's AlreadyCached check backstops it), so a
+                    // page being inserted or transcoded is never re-submitted.
                     if job.column.is_page_cached(job.page_id) {
                         continue;
                     }
@@ -457,14 +479,14 @@ impl LiquidCacheParquet {
                             }
                         };
                     }
-                    let decoded = tokio::task::block_in_place(|| {
+                    let decoded = {
                         let (_, reader) = reader.as_mut().expect("reader initialized above");
                         reader.read_range_at(job.first_row, job.row_count)
-                    });
+                    };
                     match decoded {
                         Ok(Some(batch)) if batch.num_rows() == job.row_count => {
                             let array = Arc::clone(batch.column(0));
-                            let _ = job.column.insert_page(job.page_id, array).await;
+                            let _ = handle.block_on(job.column.insert_page(job.page_id, array));
                         }
                         Ok(_) => log::warn!(
                             "Liquid page insert at row {} decoded unexpected row count",
@@ -479,8 +501,8 @@ impl LiquidCacheParquet {
                     }
                     job.cache.finish_backfill(job.entry_id);
                 }
-            });
-        }
+            })
+            .expect("failed to spawn liquid page-population thread");
         *guard = Some(tx.clone());
         tx
     }

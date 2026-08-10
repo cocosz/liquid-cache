@@ -5,7 +5,20 @@ use arrow::{
     record_batch::RecordBatch,
 };
 use arrow_schema::{ArrowError, DataType, Field, Schema};
-use liquid_cache::cache::{CacheExpression, CacheFull, LiquidCache, LiquidExpr, MemoryEntry};
+use liquid_cache::cache::{
+    CacheExpression, CacheFull, LiquidCache, LiquidExpr, MemoryEntry, MemoryProbe,
+};
+
+/// Outcome of the synchronous page-window probe.
+#[derive(Debug)]
+pub enum PageWindowProbe {
+    /// No cached page — a pure miss.
+    Absent,
+    /// The requested window, materialized.
+    Served(ArrayRef),
+    /// Page exists but is disk-backed; use the async read path.
+    DiskBacked,
+}
 use parquet::arrow::arrow_reader::ArrowPredicate;
 
 use crate::{
@@ -294,24 +307,32 @@ impl CachedColumn {
 
     /// Synchronously serves `[offset, offset + len)` of a memory-resident
     /// page: Arrow entries return a zero-copy slice, liquid entries decode
-    /// only the window. Returns `None` when the entry is absent or disk-backed
-    /// — callers fall back to the async [`Self::get_page_rows`] path. This is
-    /// the sparse-read hot path: no runtime entry, no allocation beyond the
-    /// selection bitmap for liquid entries.
+    /// only the window. One index probe answers all three cases — absent
+    /// (pure miss), served, or disk-backed (caller uses the async path). This
+    /// is the sparse-read hot path: no runtime entry, one lookup, and no
+    /// allocation beyond the selection bitmap for liquid entries.
     pub fn read_page_window_sync(
         &self,
         page_id: PageID,
         offset: usize,
         len: usize,
         page_rows: usize,
-    ) -> Option<ArrayRef> {
+    ) -> PageWindowProbe {
         debug_assert!(offset + len <= page_rows);
         let entry_id = self.column_path.entry_id(page_id.slot()).into();
-        let entry = self.cache_store.try_read_memory(&entry_id)?;
+        let entry = match self.cache_store.try_read_memory(&entry_id) {
+            MemoryProbe::Absent => {
+                self.record_page_read(false);
+                return PageWindowProbe::Absent;
+            }
+            MemoryProbe::DiskBacked => return PageWindowProbe::DiskBacked,
+            MemoryProbe::Memory(entry) => entry,
+        };
         let result = match entry {
             MemoryEntry::Arrow(array) => {
                 if array.len() != page_rows {
-                    return None;
+                    self.record_page_read(false);
+                    return PageWindowProbe::Absent;
                 }
                 if offset == 0 && len == page_rows {
                     array
@@ -321,7 +342,8 @@ impl CachedColumn {
             }
             MemoryEntry::Liquid(array) => {
                 if array.len() != page_rows {
-                    return None;
+                    self.record_page_read(false);
+                    return PageWindowProbe::Absent;
                 }
                 let mut selection = BooleanBufferBuilder::new(page_rows);
                 selection.append_n(offset, false);
@@ -331,7 +353,7 @@ impl CachedColumn {
             }
         };
         self.record_page_read(true);
-        Some(result)
+        PageWindowProbe::Served(result)
     }
 
     fn record_page_read(&self, hit: bool) {

@@ -9,7 +9,7 @@ use futures::StreamExt;
 use super::{
     budget::BudgetAccounting,
     builders::{EvaluatePredicate, Get, Insert},
-    cached_batch::{CacheEntry, CachedBatchType, MemoryEntry},
+    cached_batch::{CacheEntry, CachedBatchType, MemoryEntry, MemoryProbe},
     io_context::{EntryMetadata, entry_id_to_key},
     observer::{CacheTracer, InternalEvent, Observer},
     policies::{CachePolicy, HydrationPolicy, HydrationRequest, MaterializedEntry},
@@ -142,20 +142,22 @@ impl LiquidCache {
     }
 
     /// Synchronously reads a memory-resident entry without entering the async
-    /// runtime. Returns `None` for absent or disk-backed entries — callers
-    /// fall back to the async [`Self::get`] path for those. Hot sparse readers
-    /// probe once per batch; a runtime round-trip per probe would rival the
-    /// cost of the read itself.
-    pub fn try_read_memory(&self, entry_id: &EntryID) -> Option<MemoryEntry> {
-        let batch = self.index.get(entry_id)?;
+    /// runtime. Hot sparse readers probe once per batch; a runtime round-trip
+    /// or a second index lookup per probe would rival the cost of the read.
+    pub fn try_read_memory(&self, entry_id: &EntryID) -> MemoryProbe {
+        let Some(batch) = self.index.get(entry_id) else {
+            return MemoryProbe::Absent;
+        };
         self.cache_policy
             .notify_access(entry_id, CachedBatchType::from(batch.as_ref()));
         match batch.as_ref() {
-            CacheEntry::MemoryArrow(array) => Some(MemoryEntry::Arrow(array.clone())),
-            CacheEntry::MemoryLiquid(array) => Some(MemoryEntry::Liquid(array.clone())),
+            CacheEntry::MemoryArrow(array) => MemoryProbe::Memory(MemoryEntry::Arrow(array.clone())),
+            CacheEntry::MemoryLiquid(array) => {
+                MemoryProbe::Memory(MemoryEntry::Liquid(array.clone()))
+            }
             CacheEntry::MemorySqueezedLiquid(_)
             | CacheEntry::DiskLiquid { .. }
-            | CacheEntry::DiskArrow { .. } => None,
+            | CacheEntry::DiskArrow { .. } => MemoryProbe::DiskBacked,
         }
     }
 

@@ -108,6 +108,17 @@ pub enum MemoryEntry {
     Liquid(LiquidArrayRef),
 }
 
+/// Outcome of a single synchronous cache-index probe.
+#[derive(Debug, Clone)]
+pub enum MemoryProbe {
+    /// No entry — a pure miss; callers proceed to their own source directly.
+    Absent,
+    /// Memory-resident entry, readable without entering the async runtime.
+    Memory(MemoryEntry),
+    /// Entry exists but is disk-backed; callers use the async read path.
+    DiskBacked,
+}
+
 /// The type of the cached batch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum CachedBatchType {
