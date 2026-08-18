@@ -10,7 +10,7 @@ use parquet::arrow::arrow_reader::ArrowPredicate;
 
 use crate::{
     LiquidPredicate,
-    cache::{BatchID, ColumnAccessPath, ParquetArrayID},
+    cache::{BatchID, ColumnAccessPath, PageID, ParquetArrayID},
     optimizers::{DATE_MAPPING_METADATA_KEY, STRING_FINGERPRINT_METADATA_KEY},
 };
 use std::sync::Arc;
@@ -225,6 +225,55 @@ impl CachedColumn {
 
         self.cache_store
             .insert(self.entry_id(batch_id).into(), array)
+            .await?;
+        Ok(())
+    }
+
+    // ── Page grid ─────────────────────────────────────────────────────────
+    //
+    // Page-grid entries are whole Parquet column pages keyed by their
+    // OffsetIndex ordinal (see [`PageID`]). Unlike the batch-grid methods
+    // above, these are not restricted to predicate columns or non-string
+    // types: the doc-values path caches any column it reads, and the liquid
+    // transcoder handles strings natively.
+
+    /// Whether the whole page is resident in the cache.
+    pub fn is_page_cached(&self, page_id: PageID) -> bool {
+        self.cache_store
+            .is_cached(&self.column_path.entry_id(page_id.slot()).into())
+    }
+
+    /// Entry id of a page-grid entry (for backfill deduplication).
+    pub fn page_entry_id(&self, page_id: PageID) -> ParquetArrayID {
+        self.column_path.entry_id(page_id.slot())
+    }
+
+    /// Reads one whole cached Parquet data page.
+    pub async fn get_page(&self, page_id: PageID) -> Option<ArrayRef> {
+        let entry_id = self.column_path.entry_id(page_id.slot()).into();
+        let result = self.cache_store.get(&entry_id).read().await;
+        if result.is_some() {
+            self.cache_store.observer().runtime_stats().incr_cache_hit();
+        } else {
+            self.cache_store
+                .observer()
+                .runtime_stats()
+                .incr_cache_miss();
+        }
+        result
+    }
+
+    /// Inserts one whole decoded Parquet data page.
+    pub async fn insert_page(
+        self: &Arc<Self>,
+        page_id: PageID,
+        array: ArrayRef,
+    ) -> Result<(), InsertArrowArrayError> {
+        if self.is_page_cached(page_id) {
+            return Err(InsertArrowArrayError::AlreadyCached);
+        }
+        self.cache_store
+            .insert(self.column_path.entry_id(page_id.slot()).into(), array)
             .await?;
         Ok(())
     }
