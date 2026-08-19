@@ -1,11 +1,24 @@
 use arrow::{
-    array::{Array, ArrayRef, BooleanArray},
+    array::{Array, ArrayRef, BooleanArray, BooleanBufferBuilder},
     buffer::BooleanBuffer,
     compute::prep_null_mask_filter,
     record_batch::RecordBatch,
 };
 use arrow_schema::{ArrowError, DataType, Field, Schema};
-use liquid_cache::cache::{CacheExpression, CacheFull, LiquidCache, LiquidExpr};
+use liquid_cache::cache::{
+    CacheExpression, CacheFull, LiquidCache, LiquidExpr, MemoryEntry, MemoryProbe,
+};
+
+/// Outcome of the synchronous page-window probe.
+#[derive(Debug)]
+pub enum PageWindowProbe {
+    /// No cached page — a pure miss.
+    Absent,
+    /// The requested window, materialized.
+    Served(ArrayRef),
+    /// Page exists but is disk-backed; use the async read path.
+    DiskBacked,
+}
 use parquet::arrow::arrow_reader::ArrowPredicate;
 
 use crate::{
@@ -252,7 +265,99 @@ impl CachedColumn {
     pub async fn get_page(&self, page_id: PageID) -> Option<ArrayRef> {
         let entry_id = self.column_path.entry_id(page_id.slot()).into();
         let result = self.cache_store.get(&entry_id).read().await;
-        if result.is_some() {
+        self.record_page_read(result.is_some());
+        result
+    }
+
+    /// Reads `[offset, offset + len)` from one cached Parquet data page,
+    /// decoding only the requested rows when the entry is liquid-transcoded.
+    ///
+    /// `page_rows` must be the page's full row count — the length of the array
+    /// inserted through [`Self::insert_page`], which only ever stores whole
+    /// pages. Sparse readers depend on this: materializing a 32-row window
+    /// must not pay for an 8K-row page.
+    pub async fn get_page_rows(
+        &self,
+        page_id: PageID,
+        offset: usize,
+        len: usize,
+        page_rows: usize,
+    ) -> Option<ArrayRef> {
+        debug_assert!(offset + len <= page_rows);
+        let entry_id = self.column_path.entry_id(page_id.slot()).into();
+        let result = if offset == 0 && len == page_rows {
+            // Whole-page read: skip the selection so MemoryArrow entries
+            // return a zero-copy clone.
+            self.cache_store.get(&entry_id).read().await
+        } else {
+            let mut selection = BooleanBufferBuilder::new(page_rows);
+            selection.append_n(offset, false);
+            selection.append_n(len, true);
+            selection.append_n(page_rows - offset - len, false);
+            let selection = selection.finish();
+            self.cache_store
+                .get(&entry_id)
+                .with_selection(&selection)
+                .read()
+                .await
+        };
+        self.record_page_read(result.is_some());
+        result
+    }
+
+    /// Synchronously serves `[offset, offset + len)` of a memory-resident
+    /// page: Arrow entries return a zero-copy slice, liquid entries decode
+    /// only the window. One index probe answers all three cases — absent
+    /// (pure miss), served, or disk-backed (caller uses the async path). This
+    /// is the sparse-read hot path: no runtime entry, one lookup, and no
+    /// allocation beyond the selection bitmap for liquid entries.
+    pub fn read_page_window_sync(
+        &self,
+        page_id: PageID,
+        offset: usize,
+        len: usize,
+        page_rows: usize,
+    ) -> PageWindowProbe {
+        debug_assert!(offset + len <= page_rows);
+        let entry_id = self.column_path.entry_id(page_id.slot()).into();
+        let entry = match self.cache_store.try_read_memory(&entry_id) {
+            MemoryProbe::Absent => {
+                self.record_page_read(false);
+                return PageWindowProbe::Absent;
+            }
+            MemoryProbe::DiskBacked => return PageWindowProbe::DiskBacked,
+            MemoryProbe::Memory(entry) => entry,
+        };
+        let result = match entry {
+            MemoryEntry::Arrow(array) => {
+                if array.len() != page_rows {
+                    self.record_page_read(false);
+                    return PageWindowProbe::Absent;
+                }
+                if offset == 0 && len == page_rows {
+                    array
+                } else {
+                    array.slice(offset, len)
+                }
+            }
+            MemoryEntry::Liquid(array) => {
+                if array.len() != page_rows {
+                    self.record_page_read(false);
+                    return PageWindowProbe::Absent;
+                }
+                let mut selection = BooleanBufferBuilder::new(page_rows);
+                selection.append_n(offset, false);
+                selection.append_n(len, true);
+                selection.append_n(page_rows - offset - len, false);
+                array.filter(&selection.finish())
+            }
+        };
+        self.record_page_read(true);
+        PageWindowProbe::Served(result)
+    }
+
+    fn record_page_read(&self, hit: bool) {
+        if hit {
             self.cache_store.observer().runtime_stats().incr_cache_hit();
         } else {
             self.cache_store
@@ -260,7 +365,6 @@ impl CachedColumn {
                 .runtime_stats()
                 .incr_cache_miss();
         }
-        result
     }
 
     /// Inserts one whole decoded Parquet data page.
